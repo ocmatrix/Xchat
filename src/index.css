@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "Courier New", Courier, monospace;
+  
+  --color-nexus-bg: #080808;
+  --color-nexus-surface: #0F0F0F;
+  --color-nexus-ink: #D4AF37;
+  --color-nexus-ink-muted: #847035;
+  --color-nexus-border: #1A1A1A;
+  --color-nexus-line: #2A2A2A;
+  --color-nexus-card: #151515;
+}
+
+@layer base {
+  body {
+    @apply bg-nexus-bg text-nexus-ink font-sans antialiased selection:bg-nexus-ink selection:text-black;
+  }
+  
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-nexus-surface;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-nexus-line hover:bg-nexus-ink-muted transition-colors;
+  }
+}
