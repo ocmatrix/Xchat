@@ -5,6 +5,7 @@ import { Conversation } from './components/mobile/Conversation';
 import { ProfileSettings } from './components/mobile/ProfileSettings';
 import { MediaCall } from './components/mobile/MediaCall';
 import { InitiateGroup } from './components/mobile/InitiateGroup';
+import { PeerDiscovery } from './components/mobile/PeerDiscovery';
 
 // Mock Data
 const MOCK_CONTACTS = [
@@ -27,7 +28,7 @@ const MOCK_DEVICES = [
 ];
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<'ChatList' | 'Conversation' | 'Settings' | 'MediaCall' | 'InitiateGroup'>('ChatList');
+  const [currentScreen, setCurrentScreen] = useState<'ChatList' | 'Conversation' | 'Settings' | 'MediaCall' | 'InitiateGroup' | 'PeerDiscovery'>('ChatList');
   const [activeContact, setActiveContact] = useState<any>(null);
 
   const handleSelectContact = (contact: any) => {
@@ -69,12 +70,20 @@ export default function App() {
                 CHATS
               </button>
               {currentScreen === 'ChatList' && (
-                <button 
-                  onClick={() => setCurrentScreen('InitiateGroup')}
-                  className="text-[#D4AF37] font-mono text-sm hover:scale-110 transition-transform bg-transparent border-none cursor-pointer p-0"
-                >
-                  [ + ]
-                </button>
+                <div className="flex items-center space-x-4">
+                  <button 
+                    onClick={() => setCurrentScreen('InitiateGroup')}
+                    className="text-[#D4AF37] font-mono text-sm hover:scale-110 transition-transform bg-transparent border-none cursor-pointer p-0"
+                  >
+                    [ + ]
+                  </button>
+                  <button 
+                    onClick={() => setCurrentScreen('PeerDiscovery')}
+                    className="text-[#A9A9A9] font-mono text-sm hover:text-[#D4AF37] transition-all bg-transparent border-none cursor-pointer p-0"
+                  >
+                    [ ⚲ ]
+                  </button>
+                </div>
               )}
             </div>
             <button 
@@ -150,6 +159,24 @@ export default function App() {
                 <MediaCall 
                   targetName={activeContact?.did.includes(':') ? `${activeContact.did.slice(0, 12)}...` : activeContact?.did || "EXTERNAL_NODE"} 
                   onEndCall={endMediaCall} 
+                />
+              </motion.div>
+            )}
+
+            {currentScreen === 'PeerDiscovery' && (
+              <motion.div
+                key="PeerDiscovery"
+                initial={{ opacity: 0, scale: 1.1 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="absolute inset-0 z-[600]"
+              >
+                <PeerDiscovery 
+                  onClose={() => setCurrentScreen('ChatList')}
+                  onConnected={(did) => {
+                    setCurrentScreen('ChatList');
+                    console.log("HANDSHAKE SUCCESSFUL WITH:", did);
+                  }}
                 />
               </motion.div>
             )}
