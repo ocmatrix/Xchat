@@ -1,31 +1,59 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-mono: "Courier New", Courier, monospace;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
   
-  --color-nexus-bg: #080808;
-  --color-nexus-surface: #0F0F0F;
-  --color-nexus-ink: #D4AF37;
-  --color-nexus-ink-muted: #847035;
-  --color-nexus-border: #1A1A1A;
-  --color-nexus-line: #2A2A2A;
-  --color-nexus-card: #151515;
+  --color-nexus-bg: var(--nexus-bg);
+  --color-nexus-surface: var(--nexus-surface);
+  --color-nexus-ink: var(--nexus-ink);
+  --color-nexus-ink-alt: var(--nexus-ink-alt);
+  --color-nexus-ink-muted: var(--nexus-ink-muted);
+  --color-nexus-border: var(--nexus-border);
+  --color-nexus-accent-gold: var(--nexus-accent-gold);
+  --color-nexus-accent-blue: var(--nexus-accent-blue);
+  --color-nexus-card: var(--nexus-card);
+}
+
+:root {
+  /* Dark Theme (Default) variables */
+  --nexus-bg: #0A0A0A;
+  --nexus-surface: #111111;
+  --nexus-ink: #FFFFFF;
+  --nexus-ink-alt: #E0E0E0;
+  --nexus-ink-muted: #404040;
+  --nexus-border: rgba(255, 255, 255, 0.05);
+  --nexus-accent-gold: #D4AF37;
+  --nexus-accent-blue: #0F52BA;
+  --nexus-card: #0D0D0D;
+}
+
+body.light-theme {
+  /* Light Theme (Daylight) variables */
+  --nexus-bg: #FFFFFF;
+  --nexus-surface: #F5F5F5;
+  --nexus-ink: #000000;
+  --nexus-ink-alt: #1A1A1A;
+  --nexus-ink-muted: #A0A0A0;
+  --nexus-border: rgba(0, 0, 0, 0.08);
+  --nexus-accent-gold: #AA8B1D;
+  --nexus-accent-blue: #0047AB;
+  --nexus-card: #FDFDFD;
 }
 
 @layer base {
   body {
-    @apply bg-nexus-bg text-nexus-ink font-sans antialiased selection:bg-nexus-ink selection:text-black;
+    @apply bg-nexus-bg text-nexus-ink font-sans antialiased selection:bg-nexus-accent-gold selection:text-black transition-colors duration-300;
   }
   
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-nexus-surface;
+    @apply bg-nexus-bg;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-nexus-line hover:bg-nexus-ink-muted transition-colors;
+    @apply bg-nexus-border hover:bg-nexus-accent-gold transition-colors;
   }
 }

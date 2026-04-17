@@ -4,6 +4,36 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Google AI Studio App</title>
+    <script>
+      // Sovereign Node: Environmental Safety Shim
+      // Silences benign cross-origin frame errors common in sandboxed environments
+      (function() {
+        const originalConsoleError = console.error;
+        console.error = function(...args) {
+          const msg = args.map(a => String(a)).join(' ');
+          if (msg.includes("origin' from 'Location'") || msg.includes("cross-origin frame")) {
+            return; // Silence this specific benign environmental error
+          }
+          originalConsoleError.apply(console, args);
+        };
+
+        const silence = (e, msg) => {
+          if (msg && (msg.includes("origin' from 'Location'") || msg.includes("cross-origin frame"))) {
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            if (e.stopPropagation) e.stopPropagation();
+            if (e.preventDefault) e.preventDefault();
+            return true;
+          }
+          return false;
+        };
+        window.addEventListener('error', (e) => {
+          silence(e, e.message || (e.error && e.error.message));
+        }, true);
+        window.addEventListener('unhandledrejection', (e) => {
+          silence(e, e.reason && e.reason.message ? e.reason.message : String(e.reason));
+        }, true);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

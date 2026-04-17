@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, UserMinus, UserPlus, AlertCircle } from 'lucide-react';
+import { X, ShieldCheck, UserMinus, UserPlus, AlertCircle, Radar, ShieldAlert, Cpu, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface Member {
@@ -18,7 +18,7 @@ export const GroupPanel = ({ onClose, members, groupName, isIsolated = false }: 
   const [toast, setToast] = useState<string | null>(null);
 
   const showDeniedToast = () => {
-    setToast("ACCESS DENIED. PEER ISOLATION ACTIVE.");
+    setToast("ACCESS DENIED::ISOLATION_OVERRIDE_FAILED");
     setTimeout(() => setToast(null), 2500);
   };
 
@@ -26,7 +26,7 @@ export const GroupPanel = ({ onClose, members, groupName, isIsolated = false }: 
   const nodes = members.filter(m => m.role === 'NODE');
 
   return (
-    <div className="absolute inset-0 bg-black/98 z-[100] flex flex-col pt-16 animate-in slide-in-from-right duration-300">
+    <div className="absolute inset-0 bg-nexus-bg z-[100] flex flex-col pt-12 animate-in slide-in-from-right duration-400">
       {/* Toast Alert */}
       <AnimatePresence>
         {toast && (
@@ -34,91 +34,124 @@ export const GroupPanel = ({ onClose, members, groupName, isIsolated = false }: 
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="absolute top-24 left-1/2 -translate-x-1/2 z-[200] px-4 py-3 bg-[#2D0A0A] border border-[#EF4444]/30 rounded-sm flex items-center space-x-3 shadow-[0_10px_40px_rgba(239,68,68,0.2)]"
+            className="absolute top-24 left-1/2 -translate-x-1/2 z-[200] px-5 py-3 bg-nexus-surface border border-[#EF4444]/30 rounded-sm flex items-center space-x-3 shadow-[0_10px_50px_rgba(239,68,68,0.2)]"
           >
-            <AlertCircle size={14} className="text-[#EF4444]" />
-            <span className="text-[#EF4444] font-mono text-[9px] tracking-[1px] uppercase whitespace-nowrap">{toast}</span>
+            <ShieldAlert size={14} className="text-[#EF4444]" />
+            <span className="text-[#EF4444] font-mono text-[8px] tracking-[2px] uppercase whitespace-nowrap font-bold">{toast}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="flex items-center justify-between px-6 py-5 border-b border-[#1A1A1A]">
+      <div className="flex items-center justify-between px-8 py-8 border-b border-nexus-border">
         <div className="flex flex-col">
-          <span className="text-[#A9A9A9] font-mono text-[9px] uppercase tracking-[3px] mb-1">MLS_GROUP_INTELLIGENCE</span>
-          <span className="text-white font-mono text-sm tracking-[2px] uppercase">{groupName}</span>
-          {isIsolated && (
-            <span className="text-[#EF4444] font-mono text-[7px] tracking-[1px] uppercase">Node_Isolation_Protocol: ACTIVE</span>
-          )}
+          <div className="flex items-center space-x-3 mb-1">
+             <span className="text-nexus-ink font-mono text-sm tracking-[3px] uppercase font-bold">{groupName}</span>
+             {isIsolated && <Radar size={14} className="text-[#EF4444] animate-pulse" />}
+          </div>
+          <div className="flex items-center space-x-2">
+             <span className="text-nexus-ink-muted font-mono text-[8px] tracking-[2px] uppercase">
+                {isIsolated ? 'Node_Isolation::Genesis' : 'Peer_Discovery::Active'}
+             </span>
+             {isIsolated && (
+                 <span className="px-1 bg-[#EF4444]/10 text-[#EF4444] font-mono text-[7px] border border-[#EF4444]/20 rounded-sm">IMMUTABLE</span>
+             )}
+          </div>
         </div>
         <button 
           onClick={onClose}
-          className="p-2 hover:bg-white/10 rounded-full transition-colors border-none bg-transparent cursor-pointer text-[#A9A9A9]"
+          className="p-2 text-nexus-ink-muted hover:text-nexus-ink transition-colors border-none bg-transparent cursor-pointer"
         >
-          <X size={20} />
+          <X size={20} strokeWidth={1.5} />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide">
-        {/* Section: Administrators */}
-        <div className="bg-[#0D0D0D] px-6 py-2 border-y border-[#1A1A1A]">
-          <span className={`${isIsolated ? 'text-[#A9A9A9]' : 'text-[#D4AF37]'} font-mono text-[9px] tracking-[2px] uppercase`}>
-            {isIsolated ? 'Anonymized_Coordinators' : 'Root_Administrators'} ({admins.length})
-          </span>
-        </div>
-        <div className="px-6 mb-6">
-          {admins.map(m => (
-            <button 
-              key={m.did} 
-              className="w-full flex items-center justify-between py-4 border-b border-white/5 last:border-none bg-transparent text-left cursor-pointer outline-none"
-              onClick={isIsolated ? showDeniedToast : undefined}
-            >
-              <div className="flex flex-col overflow-hidden">
-                <span className="text-white font-mono text-[10px] tracking-tight truncate">
-                  {isIsolated ? `[ISOLATED NODE] Node-${m.did.slice(-4)}` : m.did}
-                </span>
-                <span className="text-[#A9A9A9] font-mono text-[8px] tracking-widest mt-1.5 opacity-60">
-                  {isIsolated ? 'RELAY_TRUST: VERIFIED' : 'TRUST_VECTOR: CRYPTO_MAX'}
-                </span>
+      <div className="flex-1 overflow-y-auto scrollbar-hide py-4">
+        {/* MLS Intelligence Metrics Section */}
+        <div className="px-8 mb-10">
+           <div className="grid grid-cols-2 gap-3">
+              <div className="bg-nexus-card border border-nexus-border p-4 rounded-sm">
+                 <span className="text-nexus-ink-muted font-mono text-[7px] tracking-[2px] uppercase block mb-1">MLS_Epoch</span>
+                 <span className="text-nexus-ink font-mono text-xs font-bold tracking-widest">4AA2::91</span>
               </div>
-              <ShieldCheck size={14} className={isIsolated ? 'text-[#A9A9A9]' : 'text-[#D4AF37]'} />
-            </button>
-          ))}
+              <div className="bg-nexus-card border border-nexus-border p-4 rounded-sm">
+                 <span className="text-nexus-ink-muted font-mono text-[7px] tracking-[2px] uppercase block mb-1">Tree_Depth</span>
+                 <span className="text-nexus-ink font-mono text-xs font-bold tracking-widest">0x07</span>
+              </div>
+           </div>
+           <div className="mt-3 bg-nexus-surface border border-nexus-border p-4 rounded-sm flex items-center justify-between">
+              <div>
+                 <span className="text-nexus-ink-muted font-mono text-[7px] tracking-[2px] uppercase block mb-1">Handshake_Integrity</span>
+                 <span className="text-nexus-accent-blue font-mono text-[9px] font-bold tracking-[1px] uppercase">STATE_SYNCHRONIZED</span>
+              </div>
+              <ShieldCheck size={16} className="text-nexus-accent-blue opacity-40" />
+           </div>
+        </div>
+
+        {/* Section: Administrators */}
+        <div className="px-8 mt-4 mb-8">
+           <div className="flex items-center space-x-3 mb-4 opacity-40">
+              <Cpu size={12} className={isIsolated ? 'text-nexus-ink-muted' : 'text-nexus-accent-gold'} />
+              <span className="text-nexus-ink-muted font-mono text-[8px] tracking-[3px] uppercase">
+                 {isIsolated ? 'Anonymized_Coordinators' : 'Genesis_Operators'}
+              </span>
+           </div>
+           
+           <div className="space-y-4">
+             {admins.map(m => (
+               <div key={m.did} className="flex items-center justify-between p-4 bg-nexus-surface border border-nexus-border rounded-sm">
+                  <div className="flex flex-col">
+                     <span className="text-nexus-ink font-mono text-[10px] tracking-tight">
+                        {isIsolated ? `Anonymous_Node::${m.did.slice(-4)}` : m.did.slice(0, 16) + "..."}
+                     </span>
+                     <span className="text-nexus-ink-muted font-mono text-[7px] tracking-[1.5px] uppercase mt-1">
+                        MPC_TIER_1 :: ROLE_ROOT
+                     </span>
+                  </div>
+                  <ShieldCheck size={14} className={isIsolated ? 'text-nexus-ink-muted' : 'text-nexus-accent-gold'} opacity={0.6} />
+               </div>
+             ))}
+           </div>
         </div>
 
         {/* Section: Standard Nodes */}
-        <div className="bg-[#0D0D0D] px-6 py-2 border-y border-[#1A1A1A]">
-          <span className="text-[#A9A9A9] font-mono text-[9px] tracking-[2px] uppercase">
-            {isIsolated ? 'Shadow_Replicas' : 'Active_Nodes'} ({nodes.length})
-          </span>
-        </div>
-        <div className="px-6">
-          {nodes.map(m => (
-            <button 
-              key={m.did} 
-              className="w-full flex items-center justify-between py-4 border-b border-white/5 last:border-none bg-transparent text-left cursor-pointer outline-none"
-              onClick={isIsolated ? showDeniedToast : undefined}
-            >
-              <div className="flex flex-col overflow-hidden">
-                <span className="text-white font-mono text-[10px] tracking-tight opacity-80 truncate">
-                  {isIsolated ? `[ISOLATED NODE] Node-${m.did.slice(-4)}` : m.did}
-                </span>
-                <span className="text-[#A9A9A9] font-mono text-[8px] tracking-widest mt-1.5 opacity-60">STATUS: REPLICA_SYNCED</span>
-              </div>
-              {!isIsolated && (
-                <button className="text-[#EF4444] opacity-30 hover:opacity-100 border-none bg-transparent cursor-pointer p-0 ml-4 shrink-0">
-                  <UserMinus size={14} />
-                </button>
-              )}
-            </button>
-          ))}
+        <div className="px-8 mt-8">
+           <div className="flex items-center space-x-3 mb-4 opacity-40">
+              <Users size={12} className="text-nexus-ink-muted" />
+              <span className="text-nexus-ink-muted font-mono text-[8px] tracking-[3px] uppercase">
+                 Verified_Peers ({nodes.length})
+              </span>
+           </div>
+           
+           <div className="space-y-4">
+             {nodes.map(m => (
+               <button 
+                 key={m.did} 
+                 className={`w-full flex items-center justify-between p-4 bg-nexus-surface border border-nexus-border rounded-sm transition-all text-left outline-none ${isIsolated ? 'cursor-not-allowed grayscale' : 'cursor-pointer hover:border-nexus-accent-gold/20 group'}`}
+                 onClick={isIsolated ? showDeniedToast : undefined}
+               >
+                  <div className="flex flex-col overflow-hidden">
+                     <span className="text-nexus-ink font-mono text-[10px] tracking-tight opacity-70">
+                        {isIsolated ? `Shadow_Replica::${m.did.slice(-4)}` : m.did.slice(0, 16) + "..."}
+                     </span>
+                     <span className="text-nexus-ink-muted font-mono text-[7px] tracking-[1px] uppercase mt-1">
+                        {isIsolated ? 'Handshake_Blocked' : 'Double_Ratchet::Synchronized'}
+                     </span>
+                  </div>
+                  {!isIsolated && (
+                    <UserMinus size={14} className="text-[#EF4444] opacity-0 group-hover:opacity-40 transition-opacity" />
+                  )}
+               </button>
+             ))}
+           </div>
         </div>
       </div>
 
       {!isIsolated && (
-        <div className="p-8 border-t border-[#1A1A1A] bg-[#0A0A0A]">
-          <button className="w-full border border-[#D4AF37]/40 py-4 flex items-center justify-center space-x-3 hover:bg-[#D4AF37]/10 transition-colors border-none bg-transparent cursor-pointer rounded-sm">
-            <UserPlus size={16} className="text-[#D4AF37]" />
-            <span className="text-[#D4AF37] font-mono text-[9px] uppercase tracking-[3px]">Generate Invite_Ticket</span>
+        <div className="p-8 border-t border-nexus-border bg-nexus-bg">
+          <button className="w-full h-14 bg-nexus-surface border border-nexus-accent-gold/20 flex items-center justify-center space-x-4 hover:bg-nexus-border transition-all border-none cursor-pointer rounded-sm group overflow-hidden relative">
+            <div className="absolute inset-0 bg-nexus-accent-gold/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+            <UserPlus size={16} className="text-nexus-accent-gold z-10" />
+            <span className="text-nexus-accent-gold font-mono text-[10px] uppercase font-bold tracking-[4px] z-10">Generate Group Token</span>
           </button>
         </div>
       )}

@@ -1,44 +1,33 @@
 import React, { useState } from 'react';
-import { Zap, Phone, Video, Info, ShieldCheck, Lock } from 'lucide-react';
+import { Zap, Phone, Video, Info, ShieldCheck, Lock, ChevronLeft, ArrowRight } from 'lucide-react';
 import { GroupPanel } from './GroupPanel';
+import { motion, AnimatePresence } from 'motion/react';
 
-const MosaicImage = ({ src, isMe }) => {
+const MosaicPressable = ({ src }: { src: string }) => {
   const [isDecrypted, setIsDecrypted] = useState(false);
 
   return (
     <div 
-      className={`relative w-64 h-48 overflow-hidden bg-[#111] rounded-sm group cursor-pointer transition-all duration-300 ${isDecrypted ? 'border border-[#00F0FF]/40 shadow-[0_0_15px_rgba(0,240,255,0.2)]' : 'border border-white/5'}`}
+      className={`relative w-72 h-52 overflow-hidden bg-nexus-surface rounded-sm group cursor-pointer transition-all duration-500 ${isDecrypted ? 'shadow-[0_0_30px_rgba(212,175,55,0.1)]' : ''}`}
       onMouseDown={() => setIsDecrypted(true)}
       onMouseUp={() => setIsDecrypted(false)}
       onMouseLeave={() => setIsDecrypted(false)}
       onTouchStart={() => setIsDecrypted(true)}
       onTouchEnd={() => setIsDecrypted(false)}
     >
-      {/* Content */}
       {isDecrypted ? (
         <img 
           src={src} 
-          alt="SECURE_MEDIA" 
-          className="w-full h-full object-cover animate-in fade-in zoom-in-95 duration-200"
+          alt="DECRYPTED_PAYLOAD" 
+          className="w-full h-full object-cover animate-in fade-in duration-300"
           referrerPolicy="no-referrer"
         />
       ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center relative">
-          {/* Mosaic Pattern */}
-          <div className="absolute inset-0 opacity-20 pointer-events-none grid grid-cols-8 grid-rows-6 gap-1 p-1">
-             {Array.from({ length: 48 }).map((_, i) => (
-               <div key={i} className={`bg-[#FFFFFF]/10 w-full h-full ${i % 3 === 0 ? 'animate-pulse' : ''}`} style={{ animationDelay: `${i * 50}ms` }} />
-             ))}
-          </div>
-          
-          <Lock size={24} className="text-[#A9A9A9] mb-3 opacity-40" />
-          <span className="text-[#A9A9A9] font-mono text-[8px] tracking-[3px] uppercase opacity-40">Hold to Decrypt</span>
+        <div className="w-full h-full flex flex-col items-center justify-center relative bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-repeat bg-center opacity-30">
+          <div className="absolute inset-0 bg-nexus-bg/80 backdrop-blur-sm" />
+          <Lock size={18} className="text-nexus-accent-gold mb-2 opacity-30 z-10" />
+          <span className="text-nexus-accent-gold font-mono text-[7px] tracking-[4px] uppercase opacity-30 z-10">Hold_To_Reveal</span>
         </div>
-      )}
-      
-      {/* Active Area Glow */}
-      {isDecrypted && (
-        <div className="absolute inset-0 pointer-events-none border-2 border-[#00F0FF]/30 animate-pulse" />
       )}
     </div>
   );
@@ -47,28 +36,23 @@ const MosaicImage = ({ src, isMe }) => {
 export const Conversation = ({ messages, onLightningCall, onBack, isGroup = false, isIsolated = false, targetName = "SECURE CHANNEL" }) => {
   const [showGroupPanel, setShowGroupPanel] = useState(false);
   const [inputText, setInputText] = useState("");
+  const [selectedEpoch, setSelectedEpoch] = useState<string | null>(null);
 
   const handleSend = () => {
     if (inputText.trim()) {
-      console.log("TX_PAYLOAD:", inputText);
+      console.log("TX_DATA_STREAM:", inputText);
       setInputText("");
     }
   };
 
-  const handleLightningCall = async () => {
-    console.log("⚡ Initiating QUIC 0-RTT WebTransport...");
-    console.log("🔒 Loading SFrame Crypto Suite...");
-    onLightningCall();
-  };
-
+  const currentEpoch = "4AA2";
   const MOCK_MEMBERS = [
     { did: 'did:key:z6MkhaXgBZDvotDkL5257faiztiuC2ZXQTu16ciAoeqgg76', role: 'ADMIN' as const },
     { did: 'did:key:z6MkqY8xXyGZDvotDkL5257faiztiuC2ZXQTu16ciAoeqgg', role: 'NODE' as const },
-    { did: 'did:key:z6MkpBZDvotDkL5257faiztiuC2ZXQTu16ciAoeqgg76xYz', role: 'NODE' as const },
   ];
 
   return (
-    <div className="flex-1 bg-[#0A0A0A] flex flex-col h-full w-full overflow-hidden relative font-sans">
+    <div className="flex-1 bg-nexus-bg flex flex-col h-full w-full overflow-hidden relative font-sans border-l border-nexus-border">
       {showGroupPanel && (
         <GroupPanel 
           groupName={targetName} 
@@ -78,141 +62,146 @@ export const Conversation = ({ messages, onLightningCall, onBack, isGroup = fals
         />
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-6 bg-[#0A0A0A] border-b border-[#1A1A1A] shrink-0 z-10 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+      {/* Industrial Header */}
+      <div className="flex items-center justify-between px-6 py-6 bg-nexus-bg border-b border-nexus-border shrink-0 z-20">
         <div className="flex items-center">
-          <button onClick={onBack} className="mr-5 hover:text-[#D4AF37] transition-colors flex items-center justify-center border-none bg-transparent cursor-pointer">
-            <span className="text-[#A9A9A9] font-mono text-xs tracking-widest transition-colors">{'<'}</span>
+          <button onClick={onBack} className="mr-6 text-nexus-ink-muted hover:text-nexus-ink transition-colors border-none bg-transparent cursor-pointer">
+            <ChevronLeft size={20} strokeWidth={1.5} />
           </button>
           <div className="flex flex-col">
-            <div className="flex items-center space-x-2">
-              <span className="text-[#FFFFFF] font-mono text-xs tracking-[3px] uppercase font-medium">
+            <div className="flex items-center space-x-3">
+              <span className="text-nexus-ink font-sans text-sm font-bold tracking-tight">
                 {targetName}
               </span>
-              <div className="w-1 h-1 rounded-full bg-[#0F52BA] animate-pulse" />
+              <div className="w-1.5 h-1.5 rounded-full bg-nexus-accent-blue shadow-[0_0_8px_#0F52BA]" />
             </div>
-            {isGroup && (
-              <div className="flex items-center space-x-2 mt-1">
-                <span className="text-[#A9A9A9] font-mono text-[8px] tracking-[1.5px] opacity-60">
-                  ([{MOCK_MEMBERS.length} NODES]) · EPOCH_STATE: STABLE
-                </span>
-                {isIsolated && (
-                  <>
-                    <span className="text-[#404040] text-[8px]">|</span>
-                    <span className="text-[#EF4444] font-mono text-[7px] tracking-[1px] uppercase opacity-80">NIP_ACTIVE</span>
-                  </>
-                )}
-              </div>
-            )}
+            <span className="text-nexus-ink-muted font-mono text-[8px] tracking-[2px] mt-0.5 uppercase">
+              {isGroup ? `Syndicate::${MOCK_MEMBERS.length}_Nodes` : 'Direct_Secure_Link'}
+            </span>
           </div>
         </div>
         
-        <div className="flex items-center">
-          <button 
-            onClick={() => isGroup && setShowGroupPanel(true)}
-            className="text-[#A9A9A9] hover:text-[#D4AF37] transition-colors border-none bg-transparent cursor-pointer p-0"
-          >
-            <Info size={16} />
-          </button>
-        </div>
+        <button 
+          onClick={() => isGroup && setShowGroupPanel(true)}
+          className={`p-2 transition-all border-none bg-transparent cursor-pointer flex items-center space-x-2 group ${
+            isGroup ? 'text-nexus-accent-gold hover:scale-105' : 'text-nexus-ink-muted opacity-50 cursor-not-allowed'
+          }`}
+          title={isGroup ? "Group Intelligence & Node List" : "Direct Link Info"}
+        >
+          {isGroup && (
+            <span className="font-mono text-[7px] tracking-[2px] uppercase opacity-0 group-hover:opacity-100 transition-opacity">
+              Intelligence
+            </span>
+          )}
+          <Info size={18} strokeWidth={1.5} />
+        </button>
       </div>
 
-      {/* Messages Scroll Area */}
+      {/* Messages Viewport */}
       <div 
-        className="flex-1 overflow-y-auto px-0 py-8 flex flex-col scrollbar-hide relative"
-        style={{ maskImage: 'linear-gradient(to bottom, transparent, black 5%, black 95%, transparent)' }}
+        className="flex-1 overflow-y-auto px-6 py-8 flex flex-col space-y-8 scrollbar-hide"
       >
-        <div className="mt-auto" /> {/* Push messages to bottom */}
+        <div className="mt-auto" />
         {messages.map((item) => {
           if (item.type === 'system') {
             return (
-              <div key={item.id} className="w-full py-8 flex justify-center px-8">
-                <div className="px-5 py-2.5 border-x border-[#D4AF37]/20 bg-[#D4AF37]/5">
-                  <span className="text-[#D4AF37] font-mono text-[8px] tracking-[2.5px] text-center block leading-loose uppercase">
-                    {item.text}
-                  </span>
-                </div>
+              <div key={item.id} className="w-full py-4 flex flex-col items-center">
+                <div className="h-[1px] w-full bg-nexus-border mb-4" />
+                <span className="text-nexus-ink-muted font-mono text-[8px] tracking-[3px] uppercase text-center max-w-[80%]">
+                  {item.text}
+                </span>
+                <div className="h-[1px] w-full bg-nexus-border mt-4" />
               </div>
             );
           }
 
           const isMe = item.sender === 'me';
           
-          if (item.type === 'image') {
-            return (
-              <div key={item.id} className={`w-full px-6 py-4 flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                <MosaicImage src={item.text} isMe={isMe} />
-                <div className={`mt-2 flex items-center space-x-2.5 ${isMe ? 'flex-row' : 'flex-row-reverse space-x-reverse'} opacity-40`}>
-                  <span className="text-[#A9A9A9] font-mono text-[7px] tracking-[2px] uppercase">
-                    IMG_ATTACH · 0x{item.id}
-                  </span>
-                  <div className={`w-0.5 h-3 ${isMe ? 'bg-[#D4AF37]' : 'bg-[#0F52BA]'} opacity-50`} />
-                </div>
-              </div>
-            );
-          }
-
           return (
-            <div key={item.id} className={`w-full px-6 py-2 flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-              {/* Message Bubble */}
-              <div className={`max-w-[85%] px-5 py-3.5 bg-[#1A1A1A] relative shadow-[10px_10px_30px_rgba(0,0,0,0.3)] ${isMe ? 'rounded-tl-lg rounded-bl-lg rounded-tr-sm' : 'rounded-tr-lg rounded-br-lg rounded-tl-sm'}`}>
-                <span className="text-[#FFFFFF] font-sans text-[13px] leading-relaxed tracking-wide text-left block">
-                  {item.text}
-                </span>
-                
-                {/* Internal security indicator */}
-                <div className={`absolute top-2 ${isMe ? 'right-2' : 'left-2'} opacity-20`}>
-                   <ShieldCheck size={8} className={isMe ? 'text-[#D4AF37]' : 'text-[#0F52BA]'} />
-                </div>
+            <div key={item.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+              <div className={`max-w-[80%] ${isMe ? 'bg-nexus-bg border border-nexus-accent-gold/20 p-4' : 'bg-nexus-surface p-4'} rounded-sm`}>
+                {item.type === 'image' ? (
+                  <MosaicPressable src={item.text} />
+                ) : (
+                  <span className="text-nexus-ink font-sans text-[13.5px] leading-relaxed tracking-wide">
+                    {item.text}
+                  </span>
+                )}
               </div>
               
-              {/* Metadata Label - Hardcore Geek Aesthetic */}
-              <div className={`mt-2 flex items-center space-x-2.5 ${isMe ? 'flex-row' : 'flex-row-reverse space-x-reverse'} opacity-40 hover:opacity-100 transition-opacity`}>
-                <span className="text-[#A9A9A9] font-mono text-[7px] tracking-[2px] uppercase whitespace-nowrap">
-                  {isMe ? `TX_ACK · EPOCH_${item.mlsEpoch} · 0x${item.id}${item.mlsEpoch}` : `SIG_VERIFIED · ${item.mlsEpoch}`}
+              {/* Message Fingerprint */}
+              <div className={`mt-2 flex items-center space-x-2 cursor-pointer group hover:opacity-100 transition-opacity ${isMe ? 'flex-row opacity-20' : 'flex-row-reverse space-x-reverse opacity-20'}`} onClick={() => setSelectedEpoch(item.id)}>
+                <ShieldCheck size={8} className="text-nexus-accent-blue" />
+                <span className="text-nexus-ink-muted font-mono text-[7px] tracking-[1.5px] uppercase">
+                   Epoch::{item.mlsEpoch}
                 </span>
-                <div className={`w-0.5 h-3 ${isMe ? 'bg-[#D4AF37]' : 'bg-[#0F52BA]'} opacity-50`} />
+                <Lock size={8} className={isMe ? 'text-nexus-accent-gold' : 'text-nexus-accent-blue'} />
               </div>
             </div>
           );
         })}
       </div>
       
-      {/* Input Area */}
-      <div className="px-6 py-6 pb-10 bg-[#0A0A0A] border-t border-[#1A1A1A]/50 shrink-0">
-        <div className="flex items-center bg-[#151515] px-4 rounded-sm border border-white/5 focus-within:border-[#D4AF37]/30 transition-colors">
+      {/* Input Panel V2 - Re-refined for strict UI_CONVO_FULL_V2 specs */}
+      <div className="px-6 py-8 bg-nexus-bg shrink-0">
+        <div className="flex items-center">
+          {/* Industrial Gold Lightning Button */}
           <button 
-            onClick={handleLightningCall} 
-            className="p-3 mr-2 hover:scale-110 active:scale-95 transition-all text-[#D4AF37] bg-transparent border-none cursor-pointer flex items-center justify-center filter drop-shadow-[0_0_8px_rgba(212,175,55,0.4)]"
-            title="Initiate Secure A/V Call"
+            onClick={onLightningCall} 
+            className="w-10 h-10 flex items-center justify-center text-nexus-accent-gold hover:scale-110 active:scale-95 transition-all bg-transparent border-none cursor-pointer"
           >
             <Zap size={20} fill="currentColor" />
           </button>
           
-          <input 
-            type="text"
-            className="flex-1 text-[#FFFFFF] bg-transparent font-sans text-[13px] py-4 outline-none placeholder:text-[#404040] border-none tracking-wide"
-            placeholder="TRANSMIT_PAYLOAD..."
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-          />
+          {/* Borderless Middle TextInput */}
+          <div className="flex-1 flex items-center bg-transparent px-4">
+            <input 
+              type="text"
+              className="flex-1 text-nexus-ink bg-transparent font-sans text-[15px] py-3 outline-none placeholder:text-nexus-ink-muted border-none tracking-normal"
+              placeholder="Signal_State::SYNCING..."
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            />
+          </div>
 
+          {/* SEND Button - Highlights Cyber Blue on input */}
           <button
             onClick={handleSend}
             disabled={!inputText.trim()}
-            className={`px-4 py-2 font-mono text-[10px] tracking-[2.5px] uppercase transition-all border-none bg-transparent cursor-pointer ${
-              inputText.trim() ? 'text-[#D4AF37] opacity-100 hover:scale-105 active:scale-95' : 'text-[#333333] opacity-50 cursor-not-allowed'
+            className={`flex items-center justify-center p-2 transition-all border-none bg-transparent cursor-pointer font-mono text-[10px] font-bold tracking-[2px] ${
+              inputText.trim() ? 'text-nexus-accent-blue opacity-100' : 'text-nexus-ink-muted opacity-30'
             }`}
           >
-            SEND
+            {inputText.trim() ? 'TRANSMIT' : 'SEND'}
           </button>
-
-          <div className="flex items-center space-x-3 ml-2 opacity-30">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" title="MLS_SYNC_OK" />
-          </div>
         </div>
       </div>
+
+      {/* Epoch Info Dialog */}
+      <AnimatePresence>
+        {selectedEpoch && (
+           <motion.div 
+             initial={{ opacity: 0, y: 10 }}
+             animate={{ opacity: 1, y: 0 }}
+             exit={{ opacity: 0, y: 10 }}
+             onClick={() => setSelectedEpoch(null)}
+             className="absolute inset-x-6 bottom-32 bg-nexus-surface border border-nexus-accent-gold/30 p-4 z-50 flex flex-col cursor-pointer"
+           >
+             <span className="text-nexus-accent-gold font-mono text-[9px] tracking-[2px] uppercase mb-2">Payload_Integrity_Audit</span>
+             <div className="space-y-1">
+                <div className="flex justify-between">
+                   <span className="text-nexus-ink-muted font-mono text-[7px] uppercase">MLS_Epoch</span>
+                   <span className="text-nexus-ink font-mono text-[7px]">{currentEpoch}</span>
+                </div>
+                <div className="flex justify-between">
+                   <span className="text-nexus-ink-muted font-mono text-[7px] uppercase">Rachet_State</span>
+                   <span className="text-nexus-ink font-mono text-[7px]">SYNCHRONIZED</span>
+                </div>
+             </div>
+           </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
