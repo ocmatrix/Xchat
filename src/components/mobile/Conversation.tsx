@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Zap, Phone, Video, Info, ShieldCheck, Lock, ChevronLeft, ArrowRight } from 'lucide-react';
+import { Zap, Phone, Video, Info, ShieldCheck, Lock, ChevronLeft, ArrowRight, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { GroupPanel } from './GroupPanel';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -37,6 +37,28 @@ export const Conversation = ({ messages, onLightningCall, onBack, isGroup = fals
   const [showGroupPanel, setShowGroupPanel] = useState(false);
   const [inputText, setInputText] = useState("");
   const [selectedEpoch, setSelectedEpoch] = useState<string | null>(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
+  const [historyMessages, setHistoryMessages] = useState<any[]>([]);
+  const [burningMessageId, setBurningMessageId] = useState<string | null>(null);
+
+  const loadHistory = async () => {
+    if (isLoadingHistory || hasLoadedHistory) return;
+    setIsLoadingHistory(true);
+    
+    // Simulate P2P history shard retrieval
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    const mockHistory = [
+      { id: 'h1', text: '[REDACTED] Initial syndicate formation. #001', type: 'system', mlsEpoch: '10A1' },
+      { id: 'h2', text: 'Target objective: Decentralized Mesh expansion.', sender: 'them', mlsEpoch: '10A2' },
+      { id: 'h3', text: 'All nodes synchronized. Ready for operation.', sender: 'me', mlsEpoch: '10A2' },
+    ];
+    
+    setHistoryMessages(mockHistory);
+    setIsLoadingHistory(false);
+    setHasLoadedHistory(true);
+  };
 
   const handleSend = () => {
     if (inputText.trim()) {
@@ -62,119 +84,141 @@ export const Conversation = ({ messages, onLightningCall, onBack, isGroup = fals
         />
       )}
 
-      {/* Industrial Header */}
-      <div className="flex items-center justify-between px-6 py-6 bg-nexus-bg border-b border-nexus-border shrink-0 z-20">
-        <div className="flex items-center">
-          <button onClick={onBack} className="mr-6 text-nexus-ink-muted hover:text-nexus-ink transition-colors border-none bg-transparent cursor-pointer">
-            <ChevronLeft size={20} strokeWidth={1.5} />
+      {/* XChat-Style Network/Topic Header */}
+      <div className="flex flex-col shrink-0 z-20">
+        <div className="h-10 bg-black border-b border-nexus-border flex items-center px-4 space-x-4">
+          <button onClick={onBack} className="text-nexus-ink-muted hover:text-nexus-ink transition-colors border-none bg-transparent cursor-pointer">
+            <ChevronLeft size={16} />
           </button>
-          <div className="flex flex-col">
-            <div className="flex items-center space-x-3">
-              <span className="text-nexus-ink font-sans text-sm font-bold tracking-tight">
-                {targetName}
-              </span>
-              <div className="w-1.5 h-1.5 rounded-full bg-nexus-accent-blue shadow-[0_0_8px_#0F52BA]" />
-            </div>
-            <span className="text-nexus-ink-muted font-mono text-[8px] tracking-[2px] mt-0.5 uppercase">
-              {isGroup ? `Syndicate::${MOCK_MEMBERS.length}_Nodes` : 'Direct_Secure_Link'}
-            </span>
+          <div className="h-4 w-[1px] bg-nexus-border" />
+          <div className="flex items-center space-x-2 overflow-hidden">
+            <span className="text-nexus-accent-gold font-mono text-[10px] whitespace-nowrap">NETWORK::SHARD_01</span>
+            <span className="text-nexus-ink-muted text-[10px] opacity-30">/</span>
+            <span className="text-nexus-ink font-mono text-[10px] tracking-tight truncate">{targetName}</span>
           </div>
         </div>
-        
-        <button 
-          onClick={() => isGroup && setShowGroupPanel(true)}
-          className={`p-2 transition-all border-none bg-transparent cursor-pointer flex items-center space-x-2 group ${
-            isGroup ? 'text-nexus-accent-gold hover:scale-105' : 'text-nexus-ink-muted opacity-50 cursor-not-allowed'
-          }`}
-          title={isGroup ? "Group Intelligence & Node List" : "Direct Link Info"}
-        >
-          {isGroup && (
-            <span className="font-mono text-[7px] tracking-[2px] uppercase opacity-0 group-hover:opacity-100 transition-opacity">
-              Intelligence
-            </span>
-          )}
-          <Info size={18} strokeWidth={1.5} />
-        </button>
+        <div className="h-8 bg-nexus-surface border-b border-nexus-border flex items-center px-6 overflow-hidden">
+           <span className="text-nexus-ink-muted font-mono text-[8px] uppercase tracking-[1px] mr-3 shrink-0">Topic:</span>
+           <span className="text-nexus-ink font-sans text-[10px] truncate opacity-80 italic">
+              {isGroup ? `Secure Syndicate protocol active. Epoch: ${currentEpoch}. All node traffic is E2EE.` : `Direct P2P link established with node ${targetName.slice(0, 8)}...`}
+           </span>
+        </div>
       </div>
 
-      {/* Messages Viewport */}
+      {/* XChat-Style Log Viewport */}
       <div 
-        className="flex-1 overflow-y-auto px-6 py-8 flex flex-col space-y-8 scrollbar-hide"
+        className="flex-1 overflow-y-auto px-4 py-4 flex flex-col font-mono scrollbar-hide bg-[#050505]"
       >
-        <div className="mt-auto" />
-        {messages.map((item) => {
-          if (item.type === 'system') {
-            return (
-              <div key={item.id} className="w-full py-4 flex flex-col items-center">
-                <div className="h-[1px] w-full bg-nexus-border mb-4" />
-                <span className="text-nexus-ink-muted font-mono text-[8px] tracking-[3px] uppercase text-center max-w-[80%]">
-                  {item.text}
-                </span>
-                <div className="h-[1px] w-full bg-nexus-border mt-4" />
-              </div>
-            );
-          }
+        {isGroup && !hasLoadedHistory && (
+          <div className="flex flex-col items-center justify-center py-6 mb-4 border-b border-nexus-border/20">
+            <button 
+              onClick={loadHistory}
+              disabled={isLoadingHistory}
+              className="px-4 py-1.5 border border-nexus-accent-gold/20 hover:bg-nexus-accent-gold/5 transition-all bg-transparent cursor-pointer flex items-center space-x-2 disabled:opacity-50"
+            >
+              <RefreshCw size={10} className={isLoadingHistory ? 'animate-spin' : 'text-nexus-accent-gold'} />
+              <span className="text-nexus-accent-gold font-mono text-[8px] tracking-[2px] uppercase">
+                {isLoadingHistory ? 'Syncing_Shards...' : 'Replay_Channel_Log'}
+              </span>
+            </button>
+          </div>
+        )}
 
-          const isMe = item.sender === 'me';
-          
-          return (
-            <div key={item.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-              <div className={`max-w-[80%] ${isMe ? 'bg-nexus-bg border border-nexus-accent-gold/20 p-4' : 'bg-nexus-surface p-4'} rounded-sm`}>
-                {item.type === 'image' ? (
-                  <MosaicPressable src={item.text} />
-                ) : (
-                  <span className="text-nexus-ink font-sans text-[13.5px] leading-relaxed tracking-wide">
+        <div className="mt-auto space-y-1">
+          {[...historyMessages, ...messages].map((item) => {
+            const isMe = item.sender === 'me';
+            const timestamp = "12:41"; // Mock timestamp
+            
+            if (item.type === 'system') {
+              return (
+                <div key={item.id} className="flex space-x-2 py-1 opacity-40">
+                  <span className="text-nexus-ink-muted text-[9px] w-10 shrink-0">[{timestamp}]</span>
+                  <span className="text-nexus-accent-blue text-[9px] font-bold">—</span>
+                  <span className="text-nexus-ink-muted text-[9px] italic flex-1">
                     {item.text}
                   </span>
+                </div>
+              );
+            }
+
+            // Simple hash for handle color
+            const handleColors = ['text-nexus-accent-gold', 'text-nexus-accent-blue', 'text-[#F472B6]', 'text-[#34D399]', 'text-[#A78BFA]'];
+            const colorClass = isMe ? 'text-white font-bold' : handleColors[item.id?.length % handleColors.length || 0];
+
+            return (
+              <div key={item.id} className="flex items-start space-x-2 group">
+                <span className="text-nexus-ink-muted text-[9px] w-10 shrink-0 opacity-30 group-hover:opacity-100 transition-opacity">[{timestamp}]</span>
+                <span className={`${colorClass} text-[10px] w-20 shrink-0 text-right truncate`}>
+                  {isMe ? '<ME>' : `<${item.sender || 'PEER'}>`}
+                </span>
+                <div className="flex-1 flex flex-col">
+                  {item.type === 'image' ? (
+                    <div className="mt-2 mb-2">
+                       <MosaicPressable src={item.text} />
+                    </div>
+                  ) : (
+                    <span className="text-nexus-ink-muted text-[11px] leading-relaxed break-words">
+                      {item.text}
+                    </span>
+                  )}
+                </div>
+                
+                {isMe && (
+                  <button 
+                    onClick={() => setBurningMessageId(item.id)}
+                    className="opacity-0 group-hover:opacity-30 p-1 hover:text-[#EF4444] hover:opacity-100 transition-all bg-transparent border-none cursor-pointer"
+                  >
+                    <Trash2 size={10} />
+                  </button>
                 )}
               </div>
-              
-              {/* Message Fingerprint */}
-              <div className={`mt-2 flex items-center space-x-2 cursor-pointer group hover:opacity-100 transition-opacity ${isMe ? 'flex-row opacity-20' : 'flex-row-reverse space-x-reverse opacity-20'}`} onClick={() => setSelectedEpoch(item.id)}>
-                <ShieldCheck size={8} className="text-nexus-accent-blue" />
-                <span className="text-nexus-ink-muted font-mono text-[7px] tracking-[1.5px] uppercase">
-                   Epoch::{item.mlsEpoch}
-                </span>
-                <Lock size={8} className={isMe ? 'text-nexus-accent-gold' : 'text-nexus-accent-blue'} />
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
       
-      {/* Input Panel V2 - Re-refined for strict UI_CONVO_FULL_V2 specs */}
-      <div className="px-6 py-8 bg-nexus-bg shrink-0">
-        <div className="flex items-center">
-          {/* Industrial Gold Lightning Button */}
-          <button 
-            onClick={onLightningCall} 
-            className="w-10 h-10 flex items-center justify-center text-nexus-accent-gold hover:scale-110 active:scale-95 transition-all bg-transparent border-none cursor-pointer"
-          >
-            <Zap size={20} fill="currentColor" />
-          </button>
-          
-          {/* Borderless Middle TextInput */}
-          <div className="flex-1 flex items-center bg-transparent px-4">
-            <input 
-              type="text"
-              className="flex-1 text-nexus-ink bg-transparent font-sans text-[15px] py-3 outline-none placeholder:text-nexus-ink-muted border-none tracking-normal"
-              placeholder="Signal_State::SYNCING..."
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            />
+      {/* XChat-Style Bottom Input Rail */}
+      <div className="bg-black border-t border-nexus-border shrink-0 p-1">
+        <div className="flex items-center space-x-2 px-3 py-2 bg-nexus-surface/30 rounded-sm focus-within:bg-nexus-surface/50 transition-all">
+          <span className="text-nexus-accent-blue font-mono text-[12px] font-black opacity-50 shrink-0 select-none">&gt;</span>
+          <input 
+            type="text"
+            className="flex-1 text-nexus-ink bg-transparent font-mono text-[11px] py-1 outline-none placeholder:text-nexus-ink-muted/30 border-none"
+            placeholder="Type message or /command..."
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+          />
+          <div className="flex items-center space-x-2">
+             <button 
+               onClick={onLightningCall}
+               className="p-1.5 text-nexus-accent-gold hover:scale-110 active:scale-95 transition-all bg-transparent border-none cursor-pointer"
+             >
+               <Zap size={14} fill="currentColor" />
+             </button>
+             <div className="w-[1px] h-4 bg-nexus-border" />
+             <button
+               onClick={handleSend}
+               disabled={!inputText.trim()}
+               className={`px-3 py-1 font-mono text-[9px] font-bold tracking-[1px] rounded-[2px] transition-all border-none cursor-pointer ${
+                 inputText.trim() ? 'bg-nexus-accent-blue/20 text-nexus-accent-blue' : 'text-nexus-ink-muted/20'
+               }`}
+             >
+               SEND
+             </button>
           </div>
-
-          {/* SEND Button - Highlights Cyber Blue on input */}
-          <button
-            onClick={handleSend}
-            disabled={!inputText.trim()}
-            className={`flex items-center justify-center p-2 transition-all border-none bg-transparent cursor-pointer font-mono text-[10px] font-bold tracking-[2px] ${
-              inputText.trim() ? 'text-nexus-accent-blue opacity-100' : 'text-nexus-ink-muted opacity-30'
-            }`}
-          >
-            {inputText.trim() ? 'TRANSMIT' : 'SEND'}
-          </button>
+        </div>
+        <div className="flex items-center justify-between px-3 h-6">
+           <div className="flex items-center space-x-3">
+              <span className="text-nexus-accent-blue font-mono text-[7px] uppercase tracking-[1px]">MODE::+e2ee</span>
+              <span className="text-nexus-ink-muted font-mono text-[7px] uppercase tracking-[1px] opacity-20">|</span>
+              <span className="text-nexus-accent-gold font-mono text-[7px] uppercase tracking-[1px]">ENCRYPTION::SHARD_V2</span>
+           </div>
+           {isGroup && (
+             <button onClick={() => setShowGroupPanel(true)} className="text-nexus-ink-muted hover:text-nexus-accent-gold font-mono text-[7px] uppercase tracking-[1px] bg-transparent border-none cursor-pointer">
+               {MOCK_MEMBERS.length}_Users_Logged
+             </button>
+           )}
         </div>
       </div>
 
@@ -202,6 +246,72 @@ export const Conversation = ({ messages, onLightningCall, onBack, isGroup = fals
            </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Burn Confirmation Dialog */}
+      <AnimatePresence>
+        {burningMessageId && (
+          <BurnConfirmation 
+            onConfirm={() => {
+              console.log("BURN_PROTOCOL_EXECUTED_ON:", burningMessageId);
+              setBurningMessageId(null);
+            }}
+            onCancel={() => setBurningMessageId(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
+  );
+};
+
+const BurnConfirmation = ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => {
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="absolute inset-0 bg-nexus-bg/95 backdrop-blur-md z-[1000] flex items-center justify-center p-8 text-center"
+    >
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="w-full max-w-sm bg-nexus-surface border border-[#EF4444]/30 p-8 flex flex-col items-center"
+      >
+        <div className="w-16 h-16 bg-[#EF4444]/10 rounded-full flex items-center justify-center mb-6">
+          <AlertTriangle size={32} className="text-[#EF4444]" />
+        </div>
+        
+        <h3 className="text-nexus-ink font-mono text-[14px] font-black tracking-[4px] uppercase mb-4">
+          Irreversible_Burn
+        </h3>
+        
+        <p className="text-nexus-ink-muted font-sans text-xs leading-relaxed mb-10 opacity-60">
+          This payload will be erased from all decentralized shards in this epoch. This action is final and cannot be undone by any node.
+        </p>
+        
+        <div className="w-full space-y-4">
+          <button 
+            onClick={onConfirm}
+            className="w-full h-14 bg-[#1A0A0A] border border-[#EF4444]/50 text-[#EF4444] font-mono text-[10px] font-bold tracking-[6px] uppercase hover:bg-[#2D0A0A] transition-all cursor-pointer rounded-sm"
+          >
+            CONFIRM_BURN
+          </button>
+          
+          <button 
+            onClick={onCancel}
+            className="w-full h-14 bg-transparent border border-nexus-border text-nexus-ink-muted font-mono text-[10px] font-bold tracking-[3px] uppercase hover:bg-nexus-surface transition-all cursor-pointer rounded-sm"
+          >
+            ABORT_OPERATION
+          </button>
+        </div>
+
+        <div className="mt-8 flex items-center space-x-2 opacity-20">
+          <div className="w-1 h-1 rounded-full bg-nexus-ink-muted animate-pulse" />
+          <span className="text-nexus-ink-muted font-mono text-[6px] tracking-[2px] uppercase">
+            Sovereign_Node_Admin_Authorized
+          </span>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 };

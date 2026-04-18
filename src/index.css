@@ -16,34 +16,70 @@
 }
 
 :root {
-  /* Dark Theme (Default) variables */
-  --nexus-bg: #0A0A0A;
-  --nexus-surface: #111111;
-  --nexus-ink: #FFFFFF;
-  --nexus-ink-alt: #E0E0E0;
-  --nexus-ink-muted: #404040;
-  --nexus-border: rgba(255, 255, 255, 0.05);
-  --nexus-accent-gold: #D4AF37;
-  --nexus-accent-blue: #0F52BA;
-  --nexus-card: #0D0D0D;
+  /* Dark Theme (Default) variables - Refined for "Technical Dashboard" mood */
+  --nexus-bg: #070708;
+  --nexus-surface: #0F0F11;
+  --nexus-ink: #F0F0F0;
+  --nexus-ink-alt: #CCCCCC;
+  --nexus-ink-muted: #666666;
+  --nexus-border: rgba(255, 255, 255, 0.08);
+  --nexus-accent-gold: #E2B714;
+  --nexus-accent-blue: #3A86FF;
+  --nexus-card: #0C0C0E;
+  --nexus-glow: rgba(58, 134, 255, 0.2);
 }
 
-body.light-theme {
-  /* Light Theme (Daylight) variables */
-  --nexus-bg: #FFFFFF;
-  --nexus-surface: #F5F5F5;
-  --nexus-ink: #000000;
-  --nexus-ink-alt: #1A1A1A;
-  --nexus-ink-muted: #A0A0A0;
-  --nexus-border: rgba(0, 0, 0, 0.08);
-  --nexus-accent-gold: #AA8B1D;
-  --nexus-accent-blue: #0047AB;
-  --nexus-card: #FDFDFD;
+/* Theme overrides */
+.light-theme,
+[data-theme='light'] {
+  --nexus-bg: #F8F9FA;
+  --nexus-surface: #FFFFFF;
+  --nexus-ink: #1A1A1B;
+  --nexus-ink-alt: #495057;
+  --nexus-ink-muted: #ADB5BD;
+  --nexus-border: rgba(0, 0, 0, 0.06);
+  --nexus-accent-gold: #D4A017;
+  --nexus-accent-blue: #0056B3;
+  --nexus-card: #FFFFFF;
+  --nexus-glow: rgba(0, 86, 179, 0.1);
+}
+
+[data-theme='dark'] {
+  --nexus-bg: #070708;
+  --nexus-surface: #0F0F11;
+  --nexus-ink: #F0F0F0;
+  --nexus-ink-alt: #CCCCCC;
+  --nexus-ink-muted: #666666;
+  --nexus-border: rgba(255, 255, 255, 0.08);
+  --nexus-accent-gold: #E2B714;
+  --nexus-accent-blue: #3A86FF;
+  --nexus-card: #0C0C0E;
+  --nexus-glow: rgba(58, 134, 255, 0.2);
 }
 
 @layer base {
+  html, body {
+    @apply bg-nexus-bg text-nexus-ink transition-colors duration-300;
+  }
+  
   body {
-    @apply bg-nexus-bg text-nexus-ink font-sans antialiased selection:bg-nexus-accent-gold selection:text-black transition-colors duration-300;
+    @apply font-sans antialiased selection:bg-nexus-accent-gold selection:text-black m-0 p-0 overflow-hidden min-h-screen w-full;
+    background-image: radial-gradient(circle at 50% 50%, rgba(20, 20, 25, 0.5) 0%, transparent 100%);
+  }
+
+  /* Scanline effect for hardware immersion */
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.05) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.01), rgba(0, 255, 0, 0.005), rgba(0, 0, 255, 0.01));
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.3;
   }
   
   ::-webkit-scrollbar {
@@ -56,4 +92,15 @@ body.light-theme {
   ::-webkit-scrollbar-thumb {
     @apply bg-nexus-border hover:bg-nexus-accent-gold transition-colors;
   }
+}
+
+/* QR Scanner Overrides */
+#nexus-qr-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+#nexus-qr-reader {
+  border: none !important;
 }

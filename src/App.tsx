@@ -7,7 +7,7 @@ import { MediaCall } from './components/mobile/MediaCall';
 import { InitiateGroup } from './components/mobile/InitiateGroup';
 import { PeerDiscovery } from './components/mobile/PeerDiscovery';
 import { NodeRegistry } from './components/mobile/NodeRegistry';
-import { MessageSquare, Users, Shield, ShieldAlert, Plus, Radar, Sun, Moon } from 'lucide-react';
+import { MessageSquare, Users, Shield, ShieldAlert, Plus, Radar, Sun, Moon, Battery, Wifi, Signal, Activity } from 'lucide-react';
 
 // Global Safety Shim for Sovereign Node Environment
 if (typeof window !== 'undefined') {
@@ -72,9 +72,40 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 
 // Mock Data
 const MOCK_CONTACTS = [
-  { did: 'did:key:z6MkhaXgBZDvotDkL5257faiztiuC2ZXQTu16ciAoeqgg76', name: 'CYBER_PUNK', online: true, lastCiphertext: '8f2a9b3c4d5e6f7a', paddingBucket: '512B', timestamp: '14:22', isGroup: false },
-  { did: 'did:key:z6MkqY8xXyGZDvotDkL5257faiztiuC2ZXQTu16ciAoeqgg', name: 'NEURO_LINK', online: false, lastCiphertext: '1a2b3c4d5e6f7a8b', paddingBucket: '256B', timestamp: '11:05', isGroup: false },
-  { did: 'CORE_SYNDICATE', name: 'CORE_SYNDICATE', online: true, lastCiphertext: 'c4d5e6f7a8b9c0d1', paddingBucket: '1KB', timestamp: 'YESTERDAY', isGroup: true, isIsolated: true },
+  { 
+    did: 'did:key:z6MkhaXgBZDvotDkL5257faiztiuC2ZXQTu16ciAoeqgg76', 
+    name: 'CYBER_PUNK', 
+    online: true, 
+    lastCiphertext: 'Handshake successful. Ready.', 
+    paddingBucket: '512B', 
+    timestamp: '14:22', 
+    isGroup: false,
+    unreadCount: 3,
+    avatar: 'https://picsum.photos/seed/p1/200/200'
+  },
+  { 
+    did: 'did:key:z6MkqY8xXyGZDvotDkL5257faiztiuC2ZXQTu16ciAoeqgg', 
+    name: 'NEURO_LINK', 
+    online: false, 
+    lastCiphertext: 'Payload received, awaiting decrypt.', 
+    paddingBucket: '256B', 
+    timestamp: '11:05', 
+    isGroup: false,
+    unreadCount: 0,
+    avatar: 'https://picsum.photos/seed/p2/200/200'
+  },
+  { 
+    did: 'CORE_SYNDICATE', 
+    name: 'CORE_SYNDICATE', 
+    online: true, 
+    lastCiphertext: 'Protocol: No logs retained.', 
+    paddingBucket: '1KB', 
+    timestamp: 'YESTERDAY', 
+    isGroup: true, 
+    isIsolated: true,
+    unreadCount: 12,
+    avatar: 'https://picsum.photos/seed/p3/200/200'
+  },
 ];
 
 const MOCK_MESSAGES = [
@@ -97,13 +128,17 @@ export default function App() {
   const [isConversationOpen, setIsConversationOpen] = useState(false);
   const [activeContact, setActiveContact] = useState<any>(null);
   const [overlayScreen, setOverlayScreen] = useState<'MediaCall' | 'InitiateGroup' | 'PeerDiscovery' | null>(null);
+  const [callParticipantsCount, setCallParticipantsCount] = useState(1);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   useEffect(() => {
+    // Sync theme class to body and document root for reliable variable inheritance
     if (theme === 'light') {
-      document.body.classList.add('light-theme');
+       document.body.classList.add('light-theme');
+       document.documentElement.setAttribute('data-theme', 'light');
     } else {
-      document.body.classList.remove('light-theme');
+       document.body.classList.remove('light-theme');
+       document.documentElement.setAttribute('data-theme', 'dark');
     }
   }, [theme]);
 
@@ -122,37 +157,70 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-nexus-bg flex items-center justify-center font-sans transition-colors duration-500">
+    <div 
+      className={`min-h-screen w-full bg-nexus-bg flex items-center justify-center font-sans transition-colors duration-300`}
+      data-theme={theme}
+    >
       {/* Mobile Device Container */}
       <div className="w-[393px] h-[852px] bg-nexus-bg border-[12px] border-nexus-border rounded-[52px] overflow-hidden relative shadow-2xl flex flex-col transition-all duration-500">
         
-        {/* Dynamic Header */}
-        <div className="flex items-center justify-between px-8 pt-10 pb-4 bg-nexus-bg shrink-0 z-50">
-          <div className="flex flex-col">
-            <h1 className="text-nexus-ink font-mono text-[16px] font-black tracking-[4px] uppercase">
-              {activeTab}
-            </h1>
-            <span className="text-nexus-ink-muted font-mono text-[8px] tracking-[2px] mt-1">PROTO::SOVEREIGN_V2</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <button 
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 text-nexus-ink-muted hover:text-nexus-accent-gold transition-all duration-300 bg-transparent border-none cursor-pointer"
-            >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-            {activeTab === 'CHATS' && (
-               <div className="flex items-center space-x-6">
-                 <button onClick={() => setOverlayScreen('InitiateGroup')} className="p-0 bg-transparent border-none text-nexus-accent-gold hover:scale-110 transition-transform cursor-pointer">
-                   <Plus size={20} />
-                 </button>
-                 <button onClick={() => setOverlayScreen('PeerDiscovery')} className="p-0 bg-transparent border-none text-nexus-ink-muted hover:text-nexus-accent-gold transition-colors cursor-pointer">
-                   <Radar size={18} />
-                 </button>
-               </div>
-            )}
-          </div>
+        {/* Status Bar */}
+        <div className="h-10 px-10 pt-4 flex items-center justify-between bg-nexus-bg shrink-0 z-50">
+           <span className="text-nexus-ink font-mono text-[9px] font-bold opacity-80">9:41</span>
+           <div className="flex items-center space-x-3">
+              <Signal size={12} className="text-nexus-ink opacity-70" />
+              <Wifi size={12} className="text-nexus-ink opacity-70" />
+              <div className="flex items-center space-x-1">
+                 <span className="text-nexus-ink font-mono text-[8px] opacity-60">100%</span>
+                 <Battery size={14} className="text-nexus-ink opacity-70" />
+              </div>
+           </div>
         </div>
+
+        {/* Dynamic Header */}
+        {!isConversationOpen && (
+          <div className="flex items-center justify-between px-10 pt-2 pb-6 bg-nexus-bg shrink-0 z-50">
+            <div className="flex flex-col relative">
+              <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-1 h-8 bg-nexus-accent-gold shadow-[0_0_10px_var(--nexus-accent-gold)]" />
+              <h1 className="text-nexus-ink font-mono text-[16px] font-black tracking-[4px] uppercase leading-none">
+                {activeTab}
+              </h1>
+              <span className="text-nexus-ink-muted font-mono text-[8px] tracking-[2.5px] mt-2 opacity-50">SHARD_KERNEL::v.2.0.4</span>
+            </div>
+            <div className="flex items-center space-x-4">
+              <button 
+                onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+                className="p-2 flex items-center justify-center transition-all duration-300 bg-transparent border-none cursor-pointer group"
+                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {theme === 'dark' ? (
+                  <Sun 
+                    size={20} 
+                    strokeWidth={1.5} 
+                    className="text-nexus-accent-gold group-hover:scale-110 transition-transform duration-300" 
+                  />
+                ) : (
+                  <Moon 
+                    size={20} 
+                    strokeWidth={1.5} 
+                    className="text-nexus-ink-muted group-hover:text-nexus-accent-gold group-hover:scale-110 transition-transform duration-300" 
+                  />
+                ) // End of Moon
+                }
+              </button>
+              {activeTab === 'CHATS' && (
+                 <div className="flex items-center space-x-6">
+                   <button onClick={() => setOverlayScreen('InitiateGroup')} className="p-0 bg-transparent border-none text-nexus-accent-gold hover:scale-110 transition-transform cursor-pointer">
+                     <Plus size={20} />
+                   </button>
+                   <button onClick={() => setOverlayScreen('PeerDiscovery')} className="p-0 bg-transparent border-none text-nexus-ink-muted hover:text-nexus-accent-gold transition-colors cursor-pointer">
+                     <Radar size={18} />
+                   </button>
+                 </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Screen Content */}
         <div className="flex-1 overflow-hidden relative bg-nexus-bg">
@@ -217,7 +285,11 @@ export default function App() {
                 >
                   <MediaCall 
                     targetName={activeContact?.name || activeContact?.did || "EXTERNAL_NODE"} 
-                    onEndCall={() => setOverlayScreen(null)} 
+                    participantCount={callParticipantsCount}
+                    onEndCall={() => {
+                      setOverlayScreen(null);
+                      setCallParticipantsCount(1);
+                    }} 
                   />
                 </motion.div>
               )}
@@ -234,6 +306,10 @@ export default function App() {
                 <InitiateGroup 
                    contacts={MOCK_CONTACTS.filter(c => !c.isGroup)} 
                    onClose={() => setOverlayScreen(null)} 
+                   onStartCall={(peers) => {
+                     setCallParticipantsCount(peers.length + 1);
+                     setOverlayScreen('MediaCall');
+                   }}
                 />
               )}
             </AnimatePresence>
@@ -242,22 +318,24 @@ export default function App() {
 
         {/* Bottom Tab Bar */}
         {!isConversationOpen && (
-          <div className="h-[80px] bg-nexus-bg border-t border-nexus-border flex items-center justify-around px-8 pb-6 shrink-0 z-50">
+          <div className="h-[84px] bg-nexus-bg border-t border-nexus-border/40 flex items-center justify-around px-10 pb-8 shrink-0 z-50">
             <TabItem 
               active={activeTab === 'CHATS'} 
-              icon={<MessageSquare size={20} />} 
+              icon={<MessageSquare size={18} strokeWidth={1.5} />} 
               label="CHATS" 
+              badge={15}
               onClick={() => setActiveTab('CHATS')} 
             />
             <TabItem 
               active={activeTab === 'NODES'} 
-              icon={<Users size={20} />} 
+              icon={<Users size={18} strokeWidth={1.5} />} 
               label="NODES" 
+              badge={2}
               onClick={() => setActiveTab('NODES')} 
             />
             <TabItem 
               active={activeTab === 'SOVEREIGNTY'} 
-              icon={<Shield size={20} />} 
+              icon={<Shield size={18} strokeWidth={1.5} />} 
               label="CORE" 
               onClick={() => setActiveTab('SOVEREIGNTY')} 
             />
@@ -274,16 +352,29 @@ export default function App() {
   );
 }
 
-function TabItem({ active, icon, label, onClick }: { active: boolean, icon: React.ReactNode, label: string, onClick: () => void }) {
+function TabItem({ active, icon, label, badge = 0, onClick }: { active: boolean, icon: React.ReactNode, label: string, badge?: number, onClick: () => void }) {
   return (
     <button 
       onClick={onClick}
-      className={`flex flex-col items-center space-y-1 bg-transparent border-none cursor-pointer transition-all ${active ? 'text-nexus-accent-gold' : 'text-nexus-ink-muted'}`}
+      className={`flex flex-col items-center space-y-1 bg-transparent border-none cursor-pointer transition-all relative ${active ? 'text-nexus-accent-gold' : 'text-nexus-ink-muted'}`}
     >
-      <div className={`${active ? 'scale-110' : 'scale-100'} transition-transform`}>
+      <div className={`${active ? 'scale-110' : 'scale-100'} transition-transform relative`}>
         {icon}
+        {badge > 0 && (
+          <div className="absolute -top-1.5 -right-1.5 bg-nexus-accent-blue text-white font-mono text-[7px] min-w-[12px] h-[12px] flex items-center justify-center rounded-full border border-nexus-bg px-0.5 z-10">
+            {badge > 9 ? '9+' : badge}
+          </div>
+        )}
       </div>
-      <span className="font-mono text-[8px] tracking-[2px] font-black uppercase">{label}</span>
+      <span className="font-mono text-[8px] tracking-[2.5px] font-bold uppercase mt-1 transition-opacity duration-300">
+        {label}
+      </span>
+      {active && (
+        <motion.div 
+          layoutId="tab-indicator"
+          className="absolute -bottom-3 w-1.5 h-1.5 bg-nexus-accent-gold rounded-full shadow-[0_0_12px_var(--nexus-accent-gold)]"
+        />
+      )}
     </button>
   );
 }

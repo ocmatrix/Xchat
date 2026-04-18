@@ -1,6 +1,6 @@
 {
-  "name": "Nexus P2P Architecture Blueprint",
-  "description": "Interactive architecture dashboard and command center for a progressive decentralized P2P social network.",
-  "requestFramePermissions": [],
+  "name": "Nexus P2P | Edge Computing Mesh",
+  "description": "Decentralized P2P node with real-time network contribution mining, edge relay tracking, and sovereign identity management.",
+  "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": []
 }

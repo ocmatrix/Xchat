@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Search, CheckSquare, Square, Loader2 } from 'lucide-react';
+import { X, Search, CheckSquare, Square, Loader2, PhoneCall } from 'lucide-react';
 import { SyndicateService } from '../../services/syndicateService';
 
 interface Contact {
@@ -10,9 +10,10 @@ interface Contact {
 interface InitiateGroupProps {
   onClose: () => void;
   contacts: Contact[];
+  onStartCall?: (peers: string[]) => void;
 }
 
-export const InitiateGroup = ({ onClose, contacts }: InitiateGroupProps) => {
+export const InitiateGroup = ({ onClose, contacts, onStartCall }: InitiateGroupProps) => {
   const [selectedPeers, setSelectedPeers] = useState<string[]>([]);
   const [isIsolationActive, setIsIsolationActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -71,7 +72,7 @@ export const InitiateGroup = ({ onClose, contacts }: InitiateGroupProps) => {
   return (
     <div className="absolute inset-0 bg-nexus-bg z-[500] flex flex-col animate-in fade-in slide-in-from-bottom duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-6 border-b border-nexus-border">
+      <div className="flex items-center justify-between px-6 pt-1 pb-6 border-b border-nexus-border">
         <span className="text-nexus-ink font-mono text-[10px] tracking-[3px] uppercase">Initiate_Syndicate</span>
         <button onClick={onClose} className="p-1 hover:bg-nexus-ink/10 rounded-full transition-colors border-none bg-transparent cursor-pointer text-nexus-ink-muted">
           <X size={20} />
@@ -132,21 +133,36 @@ export const InitiateGroup = ({ onClose, contacts }: InitiateGroupProps) => {
           </button>
         </div>
 
-        <button 
-          onClick={handleInitiate}
-          disabled={selectedPeers.length === 0 || isInitializing}
-          className={`w-full py-4 flex items-center justify-center space-x-3 transition-all border-none cursor-pointer rounded-sm ${
-            selectedPeers.length > 0 && !isInitializing
-              ? 'bg-nexus-accent-gold text-black hover:bg-nexus-accent-gold/80' 
-              : 'bg-nexus-border text-nexus-ink-muted/50 cursor-not-allowed'
-          }`}
-        >
-          {isInitializing ? (
-             <Loader2 size={16} className="animate-spin" />
-          ) : (
-             <span className="font-mono text-[10px] font-bold uppercase tracking-[4px]">Initiate Syndicate</span>
-          )}
-        </button>
+        <div className="flex space-x-4">
+          <button 
+            onClick={handleInitiate}
+            disabled={selectedPeers.length === 0 || isInitializing}
+            className={`flex-1 py-4 flex items-center justify-center space-x-3 transition-all border-none cursor-pointer rounded-sm ${
+              selectedPeers.length > 0 && !isInitializing
+                ? 'bg-nexus-accent-gold text-black hover:bg-nexus-accent-gold/80' 
+                : 'bg-nexus-border text-nexus-ink-muted/50 cursor-not-allowed'
+            }`}
+          >
+            {isInitializing ? (
+               <Loader2 size={16} className="animate-spin" />
+            ) : (
+               <span className="font-mono text-[10px] font-bold uppercase tracking-[4px]">Initiate Syndicate</span>
+            )}
+          </button>
+
+          <button 
+            onClick={() => onStartCall?.(selectedPeers)}
+            disabled={selectedPeers.length === 0 || isInitializing}
+            className={`px-6 py-4 flex items-center justify-center transition-all border border-nexus-accent-blue rounded-sm cursor-pointer border-solid ${
+              selectedPeers.length > 0 && !isInitializing
+                ? 'text-nexus-accent-blue hover:bg-nexus-accent-blue/10 active:scale-95' 
+                : 'text-nexus-ink-muted/30 border-nexus-border cursor-not-allowed opacity-50'
+            }`}
+            title="Start Group Call"
+          >
+            <PhoneCall size={18} />
+          </button>
+        </div>
       </div>
     </div>
   );
