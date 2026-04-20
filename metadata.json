@@ -1,6 +1,6 @@
 {
-  "name": "Nexus P2P | Edge Computing Mesh",
-  "description": "Decentralized P2P node with real-time network contribution mining, edge relay tracking, and sovereign identity management.",
+  "name": "Nexus P2P Terminal",
+  "description": "Decentralized P2P Sovereign Communication Terminal featuring real-time node synchronization, group governance, and non-custodial identity management.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": []
 }

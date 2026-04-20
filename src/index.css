@@ -1,8 +1,10 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 
 @theme {
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+  --font-display: "Space Grotesk", sans-serif;
   
   --color-nexus-bg: var(--nexus-bg);
   --color-nexus-surface: var(--nexus-surface);
@@ -16,81 +18,56 @@
 }
 
 :root {
-  /* Dark Theme (Default) variables - Refined for "Technical Dashboard" mood */
-  --nexus-bg: #070708;
-  --nexus-surface: #0F0F11;
-  --nexus-ink: #F0F0F0;
-  --nexus-ink-alt: #CCCCCC;
-  --nexus-ink-muted: #666666;
-  --nexus-border: rgba(255, 255, 255, 0.08);
-  --nexus-accent-gold: #E2B714;
-  --nexus-accent-blue: #3A86FF;
-  --nexus-card: #0C0C0E;
-  --nexus-glow: rgba(58, 134, 255, 0.2);
-}
-
-/* Theme overrides */
-.light-theme,
-[data-theme='light'] {
-  --nexus-bg: #F8F9FA;
-  --nexus-surface: #FFFFFF;
-  --nexus-ink: #1A1A1B;
-  --nexus-ink-alt: #495057;
-  --nexus-ink-muted: #ADB5BD;
-  --nexus-border: rgba(0, 0, 0, 0.06);
-  --nexus-accent-gold: #D4A017;
-  --nexus-accent-blue: #0056B3;
+  /* Institutional Premium Light Theme - Refined Contrast */
+  --nexus-bg: #F5F5F0;           /* Warm Institutional Ivory */
+  --nexus-surface: #FFFFFF;      /* Pure Paper White */
+  --nexus-ink: #141414;          /* High-Contrast Deep Ink */
+  --nexus-ink-alt: #333333;      /* Secondary hierarchy */
+  --nexus-ink-muted: #707070;    /* Legible Metadata */
+  --nexus-border: rgba(20, 20, 20, 0.08); /* Tangible Hairlines */
+  --nexus-accent-gold: #8B6F47;  /* Institutional Brass */
+  --nexus-accent-blue: #0047AB;  /* Authority Blue */
+  --nexus-accent-cyan: #008299;  /* Deep Sea Cyan */
   --nexus-card: #FFFFFF;
-  --nexus-glow: rgba(0, 86, 179, 0.1);
+  --nexus-glow: rgba(0, 71, 171, 0.03);
 }
 
+.dark-theme,
 [data-theme='dark'] {
-  --nexus-bg: #070708;
-  --nexus-surface: #0F0F11;
-  --nexus-ink: #F0F0F0;
-  --nexus-ink-alt: #CCCCCC;
-  --nexus-ink-muted: #666666;
-  --nexus-border: rgba(255, 255, 255, 0.08);
-  --nexus-accent-gold: #E2B714;
-  --nexus-accent-blue: #3A86FF;
-  --nexus-card: #0C0C0E;
-  --nexus-glow: rgba(58, 134, 255, 0.2);
+  /* Institutional Premium Dark Theme - Pure Void Architecture */
+  --nexus-bg: #000000;           /* Pure OLED Void */
+  --nexus-surface: #080808;      /* Nero Matte Shards */
+  --nexus-ink: #FFFFFF;          /* Maximum Impact Text */
+  --nexus-ink-alt: #A0A0A0;      /* Ghost Imagery Metadata */
+  --nexus-ink-muted: #888888;    /* Stealth Telemetry - Adjusted for higher visibility on Nero surface */
+  --nexus-border: #18181A;       /* Visible Structural Integrity */
+  --nexus-accent-gold: #FFB800;  /* High-Energy Amber Signal */
+  --nexus-accent-blue: #00E0FF;  /* Radiant Signal Cyan */
+  --nexus-accent-cyan: #00E0FF;
+  --nexus-card: #050505;
+  --nexus-glow: rgba(0, 224, 255, 0.1);
 }
 
 @layer base {
   html, body {
-    @apply bg-nexus-bg text-nexus-ink transition-colors duration-300;
+    @apply bg-nexus-bg text-nexus-ink transition-colors duration-500 selection:bg-nexus-accent-blue/10 selection:text-nexus-accent-blue;
   }
   
   body {
-    @apply font-sans antialiased selection:bg-nexus-accent-gold selection:text-black m-0 p-0 overflow-hidden min-h-screen w-full;
-    background-image: radial-gradient(circle at 50% 50%, rgba(20, 20, 25, 0.5) 0%, transparent 100%);
+    @apply font-sans antialiased m-0 p-0 overflow-hidden min-h-screen w-full;
   }
 
-  /* Scanline effect for hardware immersion */
-  body::after {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.05) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.01), rgba(0, 255, 0, 0.005), rgba(0, 0, 255, 0.01));
-    background-size: 100% 2px, 3px 100%;
-    pointer-events: none;
-    z-index: 9999;
-    opacity: 0.3;
+  /* Institutional Grid - Very subtle */
+  .technical-grid {
+    background-image: 
+      linear-gradient(var(--nexus-border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--nexus-border) 1px, transparent 1px);
+    background-size: 20px 20px;
   }
-  
+
   ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-  ::-webkit-scrollbar-track {
-    @apply bg-nexus-bg;
-  }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-nexus-border hover:bg-nexus-accent-gold transition-colors;
+    width: 0px;
+    height: 0px;
   }
 }
 

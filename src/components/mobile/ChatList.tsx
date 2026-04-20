@@ -1,87 +1,137 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { Info, Trash2, Search, Zap, Command } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  Info, Trash2, Search, Zap, Command, Sun, Moon, 
+  ArrowDownWideNarrow, BarChart3, Activity, 
+  Fingerprint, ChevronRight, MoreHorizontal,
+  MessageSquareOff, Radar
+} from 'lucide-react';
 
-export const ChatList = ({ contacts, onLightningCall, onSelectContact }) => {
+type SortCriteria = 'name' | 'status' | 'timestamp';
+
+export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigateToNodes }) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortCriteria>('timestamp');
 
-  const filteredContacts = contacts.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    c.did.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const processedContacts = useMemo(() => {
+    let result = contacts.filter(c => 
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      c.did.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Sorting logic
+    result.sort((a, b) => {
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+      }
+      if (sortBy === 'status') {
+        if (a.online === b.online) return a.name.localeCompare(b.name);
+        return a.online ? -1 : 1;
+      }
+      if (sortBy === 'timestamp') {
+        return b.timestamp.localeCompare(a.timestamp);
+      }
+      return 0;
+    });
+
+    return result;
+  }, [contacts, searchQuery, sortBy]);
 
   return (
-    <div className="flex-1 bg-nexus-bg flex flex-col overflow-hidden">
-      {/* Search Header */}
-      <div className="px-10 pb-6 pt-0 bg-nexus-bg shrink-0">
-        <div className="flex items-center bg-nexus-surface border border-nexus-border rounded-sm px-4 py-2.5 group focus-within:border-nexus-accent-gold transition-all duration-300 shadow-sm focus-within:shadow-[0_0_15px_rgba(226,183,20,0.1)]">
-          <Search size={14} className="text-nexus-ink-muted group-focus-within:text-nexus-accent-gold transition-colors" />
-          <input 
-            type="text"
-            placeholder="Search Protocol Nodes..." 
-            className="flex-1 bg-transparent border-none outline-none font-mono text-[9px] tracking-[2px] text-nexus-ink placeholder:text-nexus-ink-muted/30 ml-4"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto scrollbar-hide pb-20">
-        <div className="px-6 mb-2 flex items-center justify-between opacity-30 mt-2">
-          <span className="text-nexus-ink-muted font-mono text-[7px] tracking-[3px] uppercase">Active_Networks::Shard_01</span>
-          <Command size={10} />
+    <div className="bg-transparent flex flex-col font-sans shrink-0 min-h-full pb-[50px]">
+      
+      <div className="px-0 pb-1">
+        <div className="flex items-center justify-between px-4 my-1">
+           <div className="flex items-center space-x-1.5 opacity-60">
+              <BarChart3 size={10} className="text-nexus-ink" />
+              <span className="text-nexus-ink font-bold text-[9px] tracking-[2px] uppercase">ACTIVE_CONNECTIONS</span>
+           </div>
+           <span className="text-nexus-ink-muted text-[8px] font-black tracking-widest font-mono shrink-0">{processedContacts.length} ENTITIES</span>
         </div>
 
-        {filteredContacts.map((item) => {
-          const nodeIsGroup = item.isGroup;
-          
-          return (
-            <div key={item.did} className="relative overflow-hidden group border-b border-nexus-border/10 last:border-none mx-2">
-              <div
-                className="relative z-10 w-full flex items-center px-4 py-2 hover:bg-nexus-surface/40 hover:translate-x-1 transition-all duration-200 text-left cursor-pointer border-none outline-none rounded-sm"
+        <div className="space-y-0 bg-nexus-surface shadow-[0_10px_30px_rgba(0,0,0,0.02)]">
+          {processedContacts.map((item, index) => (
+            <motion.div 
+              key={item.did} 
+            >
+              <button
+                className={`w-full flex items-center px-4 py-2 text-left cursor-pointer outline-none transition-colors bg-nexus-surface border-b border-nexus-border group relative`}
                 onClick={() => onSelectContact(item)}
               >
-                {/* Status Indicator Bar */}
-                <div className={`w-[2px] h-6 mr-4 shrink-0 transition-all duration-500 ${
-                  item.online ? 'bg-nexus-accent-blue shadow-[0_0_8px_var(--nexus-accent-blue)]' : 'bg-nexus-border opacity-30'
-                }`} />
-                
-                <div className="flex-1 flex items-center justify-between min-w-0">
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center space-x-2">
-                       <span className={`font-mono text-[10px] whitespace-nowrap ${nodeIsGroup ? 'text-nexus-accent-gold font-black opacity-80' : 'text-nexus-ink-muted'}`}>
-                          {nodeIsGroup ? '#' : '@'}
-                       </span>
-                       <span className={`text-nexus-ink font-sans text-xs font-medium tracking-tight truncate ${!item.online && 'opacity-50'}`}>
-                          {item.name || "UNNAMED_NODE"}
-                       </span>
-                       {item.unreadCount > 0 && (
-                         <span className="text-nexus-accent-gold font-mono text-[9px] font-black animate-pulse">
-                           (+{item.unreadCount})
-                         </span>
+                <div className="flex items-center space-x-3 flex-1 min-w-0 relative z-10">
+                   {/* Perfect 40x40 Circular Headshot */}
+                   <div className="relative shrink-0">
+                     <div className={`w-[40px] h-[40px] flex items-center justify-center relative rounded-full overflow-hidden bg-nexus-bg border border-nexus-border`}>
+                       {item.avatar ? (
+                         <img src={item.avatar} alt="Avatar" className="w-full h-full object-cover object-center transition-transform group-hover:scale-110 duration-500" referrerPolicy="no-referrer" />
+                       ) : (
+                         <Fingerprint size={18} className="text-nexus-ink-muted opacity-20" strokeWidth={1} />
                        )}
-                    </div>
-                    {/* Compact DID / Cipher Preview */}
-                    <div className="flex items-center space-x-2 opacity-30 min-w-0">
-                       <span className="text-nexus-ink-muted font-mono text-[7px] tracking-tight truncate">
-                         {item.did.slice(0, 16)}...
-                       </span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col items-end shrink-0 ml-4 opacity-30 group-hover:opacity-100 transition-opacity">
-                    <span className="text-nexus-ink-muted font-mono text-[7px] tracking-[1px] font-bold uppercase">
-                      {item.timestamp}
-                    </span>
-                    {item.online && (
-                      <span className="text-nexus-accent-blue font-mono text-[6px] uppercase tracking-[1px] mt-0.5 font-bold">Connected</span>
-                    )}
-                  </div>
+                     </div>
+                     {item.online && (
+                       <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-nexus-accent-cyan border-2 border-nexus-surface z-30" />
+                     )}
+                   </div>
+                   
+                   <div className="flex-1 min-w-0 flex flex-col justify-center py-0">
+                     <div className="flex items-center justify-between leading-none">
+                        <span className={`text-[13px] font-bold tracking-tight text-nexus-ink truncate flex-1 font-sans`}>
+                           {item.name || "UID_" + item.did.slice(-4).toUpperCase()}
+                        </span>
+                        <span className="text-nexus-ink-muted text-[9px] font-bold shrink-0 ml-2 tracking-tight">
+                          {item.timestamp}
+                        </span>
+                     </div>
+                     
+                     <div className="text-nexus-accent-blue font-bold text-[9px] truncate block tracking-tight leading-none mt-1 uppercase opacity-80">
+                       {item.online ? 'BROADCASTING_ACT' : 'OFFLINE_SHARD_IDLE'}
+                     </div>
+
+                     <div className="flex items-center justify-between mt-1 leading-none">
+                        <div className="flex-1 min-w-0 flex flex-col pr-2">
+                           <div className="text-nexus-ink-muted font-bold text-[8px] truncate block font-mono tracking-[0.5px] uppercase opacity-40">
+                             {item.lastCiphertext || "Awaiting signal..."}
+                           </div>
+                        </div>
+                        {item.unreadCount > 0 && (
+                          <div className="bg-nexus-accent-blue text-white font-black text-[7px] min-w-[14px] h-[14px] flex items-center justify-center rounded-full shrink-0 self-center px-1">
+                            {item.unreadCount}
+                          </div>
+                        )}
+                     </div>
+                   </div>
                 </div>
+              </button>
+            </motion.div>
+          ))}
+        </div>
+        
+        {processedContacts.length === 0 && (
+           <div className="py-24 flex flex-col items-center justify-center text-center px-6">
+              <div className="relative mb-6">
+                 <div className="w-20 h-20 rounded-full border border-nexus-border bg-nexus-surface flex items-center justify-center shadow-inner relative z-10 transition-colors">
+                    <MessageSquareOff size={32} className="text-nexus-ink-muted opacity-20" strokeWidth={1} />
+                 </div>
+                 <div className="absolute inset-x-[-10px] inset-y-[-10px] border border-nexus-accent-blue/10 rounded-full animate-[ping_3s_linear_infinite] opacity-10" />
+                 <div className="absolute inset-0 border border-nexus-accent-blue/20 rounded-full animate-pulse scale-110 opacity-20" />
               </div>
-            </div>
-          );
-        })}
+              
+              <h3 className="text-[12px] font-black text-nexus-ink uppercase tracking-[4px] mb-3 font-sans">NO_CHANNELS_ACTIVE</h3>
+              
+              <p className="text-[10px] font-medium text-nexus-ink-muted max-w-[240px] tracking-wide leading-relaxed font-sans uppercase opacity-60 mb-8">
+                 Signal swept 0 active peer channels in current sector. Initiate a scan in the node registry to establish secure bridges.
+              </p>
+
+              <button 
+                onClick={onNavigateToNodes}
+                className="group relative flex items-center space-x-3 px-6 py-3 bg-nexus-accent-blue/5 border border-nexus-accent-blue/20 rounded-[4px] hover:bg-nexus-accent-blue/10 transition-all active:scale-95 cursor-pointer overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                <Radar size={14} className="text-nexus-accent-blue" />
+                <span className="text-nexus-accent-blue font-black text-[9px] tracking-[3px] uppercase">DISCOVER_NODES</span>
+              </button>
+           </div>
+        )}
       </div>
     </div>
   );
@@ -90,10 +140,13 @@ export const ChatList = ({ contacts, onLightningCall, onSelectContact }) => {
 /**
  * Deterministic Geometric Avatar based on DID seed.
  */
-function GeometricAvatar({ seed, avatar }: { seed: string, avatar?: string }) {
+function GeometricAvatar({ seed, avatar, isDarkMode }: { seed: string, avatar?: string, isDarkMode: boolean }) {
+  const surfaceClass = isDarkMode ? "bg-nexus-surface" : "bg-white";
+  const borderClass = isDarkMode ? "border-nexus-border" : "border-[#E5E5E5]";
+
   if (avatar) {
     return (
-      <div className="w-12 h-12 bg-nexus-surface border border-nexus-border overflow-hidden rounded-sm">
+      <div className={`w-12 h-12 ${surfaceClass} border ${borderClass} overflow-hidden rounded-sm`}>
         <img src={avatar} alt="Node" className="w-full h-full object-cover grayscale opacity-80" referrerPolicy="no-referrer" />
       </div>
     );
@@ -104,7 +157,7 @@ function GeometricAvatar({ seed, avatar }: { seed: string, avatar?: string }) {
   const pattern = hash % 4; // 4 simple geometric patterns
 
   return (
-    <div className="w-12 h-12 bg-nexus-surface border border-nexus-border flex items-center justify-center overflow-hidden rounded-sm">
+    <div className={`w-12 h-12 ${surfaceClass} border ${borderClass} flex items-center justify-center overflow-hidden rounded-sm`}>
        <div className="w-6 h-6 relative opacity-80">
           {pattern === 0 && <div className="absolute inset-1 border-2 border-nexus-accent-gold rotate-45" />}
           {pattern === 1 && <div className="absolute inset-2 bg-nexus-accent-gold opacity-60 rounded-sm" />}

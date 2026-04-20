@@ -37,7 +37,7 @@ export const IdentityCard = ({ did }: IdentityCardProps) => {
       console.log("📸 NX_EXPORT: Capturing identity matrix...");
       const dataUrl = await toPng(cardRef.current, {
         cacheBust: true,
-        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--nexus-bg').trim() || '#0A0A0A',
+        backgroundColor: '#050506', // Use the dark background
         style: {
            padding: '20px'
         }
@@ -53,18 +53,29 @@ export const IdentityCard = ({ did }: IdentityCardProps) => {
   };
 
   return (
-    <div className="flex flex-col items-center w-full">
+    <div className="flex flex-col items-center w-full font-mono">
       {/* The Actual Card Area for Export */}
       <div 
         ref={cardRef}
-        className={`bg-nexus-bg p-10 border relative overflow-hidden flex flex-col items-center shadow-2xl transition-all duration-700 ${
-          isOffline ? 'border-[#EF4444]/40 grayscale-[0.4]' : 'border-nexus-accent-gold/30'
+        className={`bg-nexus-surface p-12 border relative overflow-hidden flex flex-col items-center shadow-[0_0_80px_rgba(0,0,0,0.6)] transition-all duration-700 ${
+          isOffline ? 'border-[#EF4444]/40 grayscale-[0.2]' : 'border-nexus-border'
         }`}
         id="nexus-identity-card"
+        style={{ width: '340px' }}
       >
-        {/* Aesthetic Overlay Noise */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+        {/* Background Textures & Watermarks */}
+        <div className="absolute inset-0 opacity-[0.05] pointer-events-none technical-grid" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-nexus-ink/[0.02] text-[80px] font-black tracking-tighter select-none pointer-events-none rotate-12">
+          NEXUS_CORE
+        </div>
         
+        {/* Hardware Status Strip */}
+        <div className="absolute top-0 inset-x-0 h-1 flex">
+           <div className={`flex-1 transition-colors duration-500 ${isOffline ? 'bg-[#EF4444]' : 'bg-nexus-accent-blue'}`} />
+           <div className="w-1/3 bg-white/5" />
+           <div className="w-1/6 bg-nexus-accent-gold" />
+        </div>
+
         {/* Offline Protocol Overlay */}
         <AnimatePresence mode="wait">
           {isOffline && (
@@ -72,83 +83,122 @@ export const IdentityCard = ({ did }: IdentityCardProps) => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 border-2 border-[#EF4444]/10 pointer-events-none z-0"
+              className="absolute inset-0 border-2 border-[#EF4444]/10 pointer-events-none z-10"
             >
-              <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#EF4444]/50 to-transparent animate-pulse" />
+              <div className="absolute top-0 inset-x-0 h-2 bg-[#EF4444]/20 animate-pulse" />
+              <div className="absolute bottom-4 left-4 text-[#EF4444] text-[6px] font-black tracking-[2px] uppercase opacity-40">COMM_LINK_INTERRUPTED_FALLBACK_ACTIVE</div>
             </motion.div>
           )}
         </AnimatePresence>
         
         {/* Header Decor */}
-        <div className="w-full flex justify-between items-center mb-10 z-10">
+        <div className="w-full flex justify-between items-start mb-12 z-20">
            <div className="flex flex-col">
-              <span className={`font-mono text-[9px] tracking-[4px] uppercase font-bold transition-colors ${isOffline ? 'text-[#EF4444]/60' : 'text-nexus-accent-gold'}`}>
-                {isOffline ? 'Nexus_Cache' : 'Nexus_Core'}
-              </span>
-              <span className="text-nexus-ink-muted font-mono text-[7px] tracking-[2px] uppercase opacity-40">
-                {isOffline ? 'Local_Shard_Instance' : 'Identity_Matrix'}
+              <div className="flex items-center space-x-3 mb-2">
+                 <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_8px_currentColor] transition-colors ${isOffline ? 'bg-[#EF4444] text-[#EF4444]' : 'bg-nexus-accent-blue text-nexus-accent-blue'}`} />
+                 <span className={`text-[8px] tracking-[4px] uppercase font-black transition-colors ${isOffline ? 'text-[#EF4444]/80' : 'text-nexus-accent-blue'}`}>
+                    {isOffline ? 'CORE_ISOLATION' : 'NODE_PRIME'}
+                 </span>
+              </div>
+              <span className="text-nexus-ink-muted opacity-50 text-[7px] tracking-[2px] uppercase font-bold">
+                IDENTITY_VERIFICATION_MATRIX_V4.2
               </span>
            </div>
-           {isOffline ? (
-             <WifiOff size={18} className="text-[#EF4444] animate-pulse" strokeWidth={1.5} />
-           ) : (
-             <ShieldCheck size={18} className="text-nexus-accent-gold opacity-60" strokeWidth={1.5} />
-           )}
+           
+           <div className="flex flex-col items-end opacity-40">
+              <span className="text-nexus-ink text-[6px] tracking-[1px] uppercase font-mono">ID_SHARD_8821</span>
+              <span className="text-nexus-ink text-[6px] tracking-[1px] uppercase font-mono opacity-50">RELAY: ASIA-PACIFIC</span>
+           </div>
         </div>
 
-        {/* QR Matrix */}
-        <div className={`p-3 bg-white/[0.02] border relative mb-10 transition-colors ${isOffline ? 'border-[#EF4444]/20' : 'border-nexus-border'}`}>
-           <QRCodeSVG
-             value={did}
-             size={250}
-             bgColor="transparent"
-             fgColor="currentColor"
-             level="H"
-             includeMargin={false}
-             className={`transition-colors duration-1000 ${isOffline ? 'text-nexus-ink-muted/50' : 'text-nexus-accent-gold'}`}
-           />
-           
-           {/* Precision Corner Graphics */}
-           <div className={`absolute -top-1 -left-1 w-3 h-3 border-t border-l transition-colors ${isOffline ? 'border-[#EF4444]/40' : 'border-nexus-accent-gold'}`} />
-           <div className={`absolute -top-1 -right-1 w-3 h-3 border-t border-r transition-colors ${isOffline ? 'border-[#EF4444]/40' : 'border-nexus-accent-gold'}`} />
-           <div className={`absolute -bottom-1 -left-1 w-3 h-3 border-b border-l transition-colors ${isOffline ? 'border-[#EF4444]/40' : 'border-nexus-accent-gold'}`} />
-           <div className={`absolute -bottom-1 -right-1 w-3 h-3 border-b border-r transition-colors ${isOffline ? 'border-[#EF4444]/40' : 'border-nexus-accent-gold'}`} />
+        {/* QR Matrix Container */}
+        <div className={`relative p-5 bg-black/40 border backdrop-blur-sm shadow-2xl transition-all duration-500 group ${isOffline ? 'border-[#EF4444]/30' : 'border-nexus-border hover:border-nexus-accent-gold/40'}`}>
+           {/* Corner Decorators */}
+           <div className={`absolute -top-1 -left-1 w-6 h-6 border-t border-l transition-colors duration-500 ${isOffline ? 'border-[#EF4444]/60' : 'border-nexus-accent-gold'}`} />
+           <div className={`absolute -top-1 -right-1 w-6 h-6 border-t border-r transition-colors duration-500 ${isOffline ? 'border-[#EF4444]/60' : 'border-nexus-accent-gold'}`} />
+           <div className={`absolute -bottom-1 -left-1 w-6 h-6 border-b border-l transition-colors duration-500 ${isOffline ? 'border-[#EF4444]/60' : 'border-nexus-accent-gold'}`} />
+           <div className={`absolute -bottom-1 -right-1 w-6 h-6 border-b border-r transition-colors duration-500 ${isOffline ? 'border-[#EF4444]/60' : 'border-nexus-accent-gold'}`} />
+
+           <div className="relative overflow-hidden p-2 rounded-[2px] bg-white/5">
+              <QRCodeSVG
+                value={did}
+                size={220}
+                bgColor="transparent"
+                fgColor={isOffline ? "#EF4444" : "#D4AF37"}
+                level="H"
+                includeMargin={false}
+                className="transition-all duration-1000 opacity-90 grayscale-[0.2]"
+              />
+              {/* Scanline Effect */}
+              <motion.div 
+                animate={{ top: ['0%', '100%'] }}
+                transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                className="absolute left-0 w-full h-[2px] bg-nexus-border z-10"
+              />
+           </div>
+
+           {/* Security Stamp overlay */}
+           <div className="absolute top-2 right-2 flex items-center space-x-1 px-1.5 py-0.5 bg-black border border-nexus-border rounded-[1px] opacity-20 pointer-events-none scale-75 origin-top-right">
+              <ShieldCheck size={8} className="text-nexus-ink" />
+              <span className="text-[5px] text-nexus-ink tracking-[1px] uppercase font-black">VALIDATED</span>
+           </div>
         </div>
 
         {/* Identity Metadata Footer */}
-        <div className="w-full border-t border-nexus-border pt-8 flex flex-col items-center text-center z-10">
-           <span className={`font-mono text-[9px] tracking-widest break-all px-4 mb-2 transition-opacity ${isOffline ? 'opacity-40' : 'opacity-100'}`}>
-             {did}
-           </span>
-           <div className="flex space-x-6">
+        <div className="w-full mt-12 bg-nexus-border opacity-50 border border-nexus-border p-6 relative overflow-hidden z-20">
+           <div className="absolute top-0 right-0 w-16 h-1 bg-nexus-accent-gold/20" />
+           
+           <div className="flex flex-col mb-6">
+              <span className="text-nexus-ink-muted opacity-50 text-[6px] tracking-[3px] uppercase mb-1 font-black leading-none">NODE_IDENTIFIER</span>
+              <span className={`text-[10px] break-all leading-tight tracking-[1px] font-bold transition-opacity duration-500 ${isOffline ? 'text-[#EF4444]/80' : 'text-nexus-ink/80'}`}>
+                {did}
+              </span>
+           </div>
+
+           <div className="flex items-center space-x-8">
               <div className="flex flex-col">
-                 <span className="text-nexus-ink-muted font-mono text-[6px] tracking-[1.5px] uppercase opacity-40">Classification</span>
-                 <span className={`font-mono text-[8px] tracking-[1px] uppercase ${isOffline ? 'text-nexus-ink-muted font-bold' : 'text-nexus-accent-gold'}`}>
-                    {isOffline ? 'Cached_Node' : 'Alpha_Protocol'}
-                 </span>
-              </div>
-              <div className="flex flex-col">
-                 <span className="text-nexus-ink-muted font-mono text-[6px] tracking-[1.5px] uppercase opacity-40">Status</span>
-                 <div className="flex items-center space-x-1.5 justify-center">
-                    {isOffline && <Clock size={8} className="text-[#EF4444]" />}
-                    <span className={`font-mono text-[8px] tracking-[1px] uppercase ${isOffline ? 'text-[#EF4444]' : 'text-nexus-accent-gold'}`}>
-                      {isOffline ? 'Offline_Mode' : 'Node_Genesis'}
+                 <span className="text-nexus-ink/10 text-[6px] tracking-[2px] uppercase mb-1 font-black">Classification</span>
+                 <div className="flex items-center space-x-2">
+                    <div className="w-1 h-3 bg-nexus-accent-blue" />
+                    <span className={`text-[9px] tracking-[2px] uppercase font-black ${isOffline ? 'text-nexus-ink-muted' : 'text-nexus-accent-gold'}`}>
+                       {isOffline ? 'CACHED_SLOT' : 'ALPHA_ENTITY'}
                     </span>
                  </div>
               </div>
+              <div className="flex-1 h-full flex flex-col items-end">
+                 <span className="text-nexus-ink/10 text-[6px] tracking-[2px] uppercase mb-1 font-black">Signal_Integrity</span>
+                 <div className="flex items-center space-x-1">
+                    {[1, 1, 1, 1, 0].map((v, i) => (
+                       <div key={i} className={`w-3 h-1.5 rounded-[1px] ${i < 4 && !isOffline ? 'bg-nexus-accent-blue shadow-[0_0_5px_var(--nexus-accent-blue)]' : isOffline ? 'bg-[#EF4444]/30' : 'bg-white/5'}`} />
+                    ))}
+                 </div>
+              </div>
+           </div>
+           
+           {/* Technical Specs Footer */}
+           <div className="mt-8 pt-4 border-t border-nexus-border flex justify-between items-center opacity-30">
+              <span className="text-[5px] tracking-[2px] uppercase">SHA-256 / AES-256-GCM / ED25519</span>
+              <span className="text-[5px] tracking-[1px] uppercase">Nexus_Kernel_v1.0.4</span>
            </div>
         </div>
       </div>
 
       {/* Export Action Trigger */}
-      <motion.button 
-        whileTap={{ scale: 0.98 }}
-        onClick={handleExport}
-        className="mt-8 flex items-center space-x-3 text-nexus-accent-gold hover:text-nexus-ink transition-all bg-nexus-card border border-nexus-accent-gold/20 px-8 py-3 rounded-sm group cursor-pointer"
-      >
-        <Download size={14} className="group-hover:translate-y-0.5 transition-transform" />
-        <span className="font-mono text-[9px] tracking-[3px] uppercase">Export Identity Card</span>
-      </motion.button>
+      <div className="relative mt-12 w-full max-w-sm">
+        <motion.button 
+          whileTap={{ scale: 0.98 }}
+          onClick={handleExport}
+          className="w-full flex items-center justify-center space-x-4 h-16 bg-nexus-border border border-nexus-border text-nexus-ink hover:text-nexus-accent-gold hover:border-nexus-accent-gold/40 transition-all rounded-sm group relative overflow-hidden cursor-pointer"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+          <Download size={18} className="text-nexus-ink-muted group-hover:text-nexus-accent-gold transition-colors" strokeWidth={1.5} />
+          <span className="text-[10px] tracking-[5px] uppercase font-black">Export_Secure_Identity</span>
+        </motion.button>
+        <div className="mt-4 flex items-center justify-center space-x-2 text-nexus-ink-muted opacity-50 select-none">
+           <div className="w-1 h-1 bg-white/20 rounded-full" />
+           <span className="text-[7px] tracking-[2px] uppercase font-bold">Shard will be saved in Buffer_Storage_Format (.PNG)</span>
+        </div>
+      </div>
     </div>
   );
 };
