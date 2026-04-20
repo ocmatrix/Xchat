@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, Mic, MicOff, Hand, Video, VideoOff, 
   Settings, X, Check, XCircle, Shield, 
-  Activity, Signal, Lock, ShieldAlert
+  Activity, Signal, Lock, ShieldAlert,
+  MoreVertical, UserMinus
 } from 'lucide-react';
 
 interface AuditoriumMeetingProps {
@@ -30,6 +31,11 @@ export const AuditoriumMeeting: React.FC<AuditoriumMeetingProps> = ({
   const [isLocked, setIsLocked] = useState(false);
   const [showApprovalFlash, setShowApprovalFlash] = useState(false);
   const [blockedConnections, setBlockedConnections] = useState(0);
+  const [activeMenuDid, setActiveMenuDid] = useState<string | null>(null);
+
+  // Connection Error State
+  const [mediaError, setMediaError] = useState<{ title: string; message: string } | null>(null);
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   // High-Density Media Engine Stats
   const [compressionStats, setCompressionStats] = useState({
@@ -67,11 +73,34 @@ export const AuditoriumMeeting: React.FC<AuditoriumMeetingProps> = ({
 
     // High-Density Compression Simulation Engine
     const mediaEngineTimer = setInterval(() => {
+      // Simulate random media pipeline degradation or ICE connection drops
+      if (!isReconnecting && Math.random() < 0.05) { 
+         // 5% chance every 3s to hit a severe connection fault for demonstration
+         console.error("[WEBRTC_FAULT] ICE Candidate Connection Interrupted. Packet drop rate > 40%.");
+         setMediaError({
+           title: "ICE_CONNECTION_FAILED",
+           message: "Upstream media gateway dropped. Negotiating fallback TURN relays..."
+         });
+         setIsReconnecting(true);
+         
+         // Auto-recover after 4 seconds
+         setTimeout(() => {
+           console.log("[WEBRTC_RECOVERY] Fallback TURN relays established. Streams resuming.");
+           setIsReconnecting(false);
+           setMediaError(null);
+         }, 4000);
+      }
+
       setCompressionStats(prev => {
         const baseEfficiency = 42; // AV1 standard over H264
         const jitter = Math.random() * 5 - 2.5;
         const currentEfficiency = Math.min(65, Math.max(35, baseEfficiency + jitter));
         
+        // If reconnecting, bandwidth drops to near-zero
+        if (isReconnecting) {
+          return { ...prev, bitrate: Math.max(0, prev.bitrate - 150) };
+        }
+
         return {
           codec: Math.random() > 0.05 ? 'AV1_HD' : 'VP9_FALLBACK',
           efficiency: currentEfficiency,
@@ -176,6 +205,14 @@ export const AuditoriumMeeting: React.FC<AuditoriumMeetingProps> = ({
     ));
   };
 
+  const handleDemote = (did: string) => {
+    console.log(`[CRDT_STATE] Demoting ${did} to LISTENER`);
+    setParticipants(prev => prev.map(p =>
+      p.did === did ? { ...p, role: 'LISTENER', isMuted: false, isVideoOff: false } : p
+    ));
+    setActiveMenuDid(null);
+  };
+
   const handleLockRoom = () => {
     setIsLocked(!isLocked);
     console.log(`[GOSSIP_SWARM] Broadcast: ROOM_LOCKED=${!isLocked}`);
@@ -199,6 +236,38 @@ export const AuditoriumMeeting: React.FC<AuditoriumMeetingProps> = ({
             exit={{ opacity: 0 }}
             className="absolute inset-0 z-50 bg-[#00D1FF] mix-blend-screen pointer-events-none"
           />
+        )}
+      </AnimatePresence>
+
+      {/* Network Error Overlay Banner */}
+      <AnimatePresence>
+        {mediaError && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="absolute top-16 left-1/2 -translate-x-1/2 z-[60] mt-4 w-11/12 max-w-md bg-[#1A0B0B]/90 backdrop-blur-xl border border-[#EF4444]/40 rounded-lg shadow-[0_10px_40px_rgba(239,68,68,0.2)] overflow-hidden"
+          >
+            <div className="h-1 w-full bg-gradient-to-r from-transparent via-[#EF4444] to-transparent animate-[pulse_2s_ease-in-out_infinite]"></div>
+            <div className="px-4 py-3 flex items-start space-x-3">
+              <div className="shrink-0 p-1.5 bg-[#EF4444]/10 rounded-full mt-0.5 animate-pulse">
+                <ShieldAlert size={16} className="text-[#EF4444]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-[#EF4444] font-black text-[11px] uppercase tracking-[2px]">{mediaError.title}</h3>
+                <p className="text-white/60 text-[10px] tracking-wide mt-1 leading-relaxed font-mono">
+                  {mediaError.message}
+                </p>
+                <div className="flex items-center space-x-2 mt-2 opacity-50">
+                   <Activity size={10} className="text-white" />
+                   <span className="text-[9px] font-mono tracking-widest text-[#D4AF37]">ATTEMPTING_RECONNECT...</span>
+                </div>
+              </div>
+              <button onClick={() => setMediaError(null)} className="shrink-0 text-white/40 hover:text-white transition-colors">
+                 <X size={14} />
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -274,26 +343,61 @@ export const AuditoriumMeeting: React.FC<AuditoriumMeetingProps> = ({
                   <span className="text-[8px] font-bold tracking-[1px] text-white/80 truncate max-w-[80px]">{speaker.did}</span>
                 </div>
                 
-                {/* Host Controls for Peer Management */}
-                {role === 'HOST' && speaker.did !== 'MY_NODE' && (
-                  <div className="absolute top-2 left-2 flex items-center space-x-1 z-20">
-                    <button 
-                      onClick={() => handleToggleMute(speaker.did)}
-                      className={`p-1.5 rounded-sm border transition-all ${speaker.isMuted ? 'bg-[#EF4444]/20 border-[#EF4444]/40 text-[#EF4444]' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'}`}
-                    >
-                      {speaker.isMuted ? <MicOff size={10} /> : <Mic size={10} />}
-                    </button>
-                    <button 
-                      onClick={() => handleToggleVideo(speaker.did)}
-                      className={`p-1.5 rounded-sm border transition-all ${speaker.isVideoOff ? 'bg-[#EF4444]/20 border-[#EF4444]/40 text-[#EF4444]' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'}`}
-                    >
-                      {speaker.isVideoOff ? <VideoOff size={10} /> : <Video size={10} />}
-                    </button>
+                {/* Top-Right indicators and Host Menu Trigger */}
+                <div className="absolute top-2 right-2 flex items-center space-x-1 z-30">
+                  <div className="text-white/40">
+                    {speaker.isMuted ? <MicOff size={12} /> : <Mic size={12} className={speaker.role === 'HOST' ? 'text-[#D4AF37]' : 'text-[#00D1FF]'} />}
                   </div>
-                )}
+                  {role === 'HOST' && speaker.did !== 'MY_NODE' && (
+                    <div className="relative">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setActiveMenuDid(speaker.did); }}
+                        className="p-0.5 text-white/50 hover:text-white transition-colors bg-black/40 rounded-sm backdrop-blur-md border border-white/10 ml-1"
+                      >
+                        <MoreVertical size={12} />
+                      </button>
+                      
+                      <AnimatePresence>
+                        {activeMenuDid === speaker.did && (
+                          <>
+                            {/* Invisible backdrop to close menu */}
+                            <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setActiveMenuDid(null); }} />
 
-                <div className="absolute top-2 right-2 text-white/40 z-10">
-                  {speaker.isMuted ? <MicOff size={12} /> : <Mic size={12} className={speaker.role === 'HOST' ? 'text-[#D4AF37]' : 'text-[#00D1FF]'} />}
+                            {/* Context Menu */}
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95, y: -10, transformOrigin: 'top right' }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.1 } }}
+                              className="absolute top-full right-0 mt-2 w-36 bg-black/90 backdrop-blur-xl border border-white/10 rounded-sm shadow-2xl z-50 flex flex-col py-1 overflow-hidden"
+                            >
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleToggleMute(speaker.did); setActiveMenuDid(null); }}
+                                className="px-3 py-2 flex items-center space-x-3 hover:bg-white/10 transition-colors text-left"
+                              >
+                                {speaker.isMuted ? <Mic size={10} className="text-[#22C55E]" /> : <MicOff size={10} className="text-[#EF4444]" />}
+                                <span className="text-[9px] font-bold text-white uppercase tracking-wider">{speaker.isMuted ? 'Unmute Auth' : 'Force Mute'}</span>
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleToggleVideo(speaker.did); setActiveMenuDid(null); }}
+                                className="px-3 py-2 flex items-center space-x-3 hover:bg-white/10 transition-colors text-left"
+                              >
+                                {speaker.isVideoOff ? <Video size={10} className="text-[#22C55E]" /> : <VideoOff size={10} className="text-[#EF4444]" />}
+                                <span className="text-[9px] font-bold text-white uppercase tracking-wider">{speaker.isVideoOff ? 'Enable Feed' : 'Cut Video'}</span>
+                              </button>
+                              <div className="h-[1px] bg-white/10 my-1 box-border w-full" />
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDemote(speaker.did); }}
+                                className="px-3 py-2 flex items-center space-x-3 hover:bg-[#EF4444]/20 transition-colors text-left text-[#EF4444]"
+                              >
+                                <UserMinus size={10} />
+                                <span className="text-[9px] font-bold uppercase tracking-wider">Demote</span>
+                              </button>
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
                 </div>
                 {/* Simulated Waveform or Video stream */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none transition-all">
@@ -364,6 +468,23 @@ export const AuditoriumMeeting: React.FC<AuditoriumMeetingProps> = ({
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* Dev Simulation Control */}
+              <button 
+                onClick={() => {
+                   setMediaError({
+                     title: "CRITICAL_GOSSIP_FAILURE",
+                     message: "Local hardware pipeline collapsed. Rebooting physical audio layer and attempting mesh reconnection..."
+                   });
+                   setIsReconnecting(true);
+                   setTimeout(() => { setIsReconnecting(false); setMediaError(null); }, 4000);
+                }}
+                className="w-full py-1.5 flex justify-center items-center space-x-2 border border-[#D4AF37]/30 bg-[#D4AF37]/5 hover:bg-[#D4AF37]/10 text-[#D4AF37] rounded-sm cursor-pointer transition-colors"
+              >
+                <Activity size={10} />
+                <span className="text-[8px] font-black uppercase tracking-[1px]">Sim Fault</span>
+              </button>
+
               <button onClick={handleMuteAll} className="w-full py-1.5 flex justify-center items-center space-x-2 border border-white/20 hover:bg-white/10 text-white/70 rounded-sm cursor-pointer transition-colors">
                 <MicOff size={10} />
                 <span className="text-[8px] font-black uppercase tracking-[1px]">Mute All</span>
@@ -433,11 +554,25 @@ export const AuditoriumMeeting: React.FC<AuditoriumMeetingProps> = ({
           ) : (
             <>
               {/* Speaker/Host Controls */}
-              <button className="w-12 h-12 flex items-center justify-center rounded-full bg-white text-black hover:scale-105 transition-transform cursor-pointer border-none shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-                <Mic size={20} />
+              <button 
+                onClick={() => handleToggleMute('MY_NODE')}
+                className={`w-12 h-12 flex items-center justify-center rounded-full transition-transform cursor-pointer border-none shadow-[0_0_20px_rgba(255,255,255,0.2)] ${
+                  participants.find(p => p.did === 'MY_NODE')?.isMuted 
+                  ? 'bg-[#EF4444] text-white hover:bg-[#EF4444]/90' 
+                  : 'bg-white text-black hover:scale-105'
+                }`}
+              >
+                {participants.find(p => p.did === 'MY_NODE')?.isMuted ? <MicOff size={20} /> : <Mic size={20} />}
               </button>
-              <button className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer border-none">
-                <Video size={18} />
+              <button 
+                onClick={() => handleToggleVideo('MY_NODE')}
+                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all cursor-pointer border-none ${
+                  participants.find(p => p.did === 'MY_NODE')?.isVideoOff
+                  ? 'bg-[#EF4444] text-white hover:bg-[#EF4444]/90'
+                  : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                {participants.find(p => p.did === 'MY_NODE')?.isVideoOff ? <VideoOff size={18} /> : <Video size={18} />}
               </button>
               <button className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer border-none">
                 <Settings size={18} />

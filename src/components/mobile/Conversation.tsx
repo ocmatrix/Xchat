@@ -241,7 +241,7 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
   ];
 
   return (
-    <div className="absolute inset-0 bg-nexus-bg z-[100] flex flex-col overflow-hidden animate-in fade-in duration-500 font-sans">
+    <div className="absolute inset-0 bg-nexus-bg z-[500] flex flex-col overflow-hidden animate-in fade-in duration-500 font-sans">
       {showGroupPanel && (
         <GroupPanel 
           groupName={targetName} 
@@ -251,84 +251,74 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
         />
       )}
 
-      {/* Tactical Header */}
-      <div className="shrink-0 z-20 flex flex-col pt-10 pb-1 px-4 bg-nexus-surface/90 backdrop-blur-xl border-b border-nexus-border shadow-sm relative transition-colors">
-        <div className="flex items-center justify-between w-full h-[36px]">
-          <div className="flex items-center space-x-3 overflow-hidden flex-1">
-            <button 
-              onClick={onBack} 
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-nexus-bg border border-nexus-border text-nexus-ink-muted hover:text-nexus-ink transition-all cursor-pointer active:scale-95 shrink-0"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            
-            <div className="flex flex-col min-w-0 flex-1 pl-1">
-               <div className="flex items-center space-x-2 mb-0 w-full" onClick={() => isGroup && setShowGroupPanel(true)}>
-                  <h2 className="text-nexus-ink font-sans text-2xl font-bold tracking-tight uppercase truncate cursor-pointer">
-                    {targetName}
-                  </h2>
-                  <div className={`w-1.5 h-1.5 shrink-0 rounded-full ${isIsolated ? 'bg-[#FF3B30]' : 'bg-nexus-accent-cyan animate-pulse'}`} />
-                  
-                  {/* E2EE DYNAMIC COLOR-CODED BADGE */}
-                  <div className={`flex items-center space-x-1 px-1.5 py-0.5 border rounded-[3px] ml-1 shrink-0 ${
-                    isIsolated 
-                      ? 'bg-[#FF3B30]/10 border-[#FF3B30]/30 text-[#FF3B30]' 
-                      : 'bg-nexus-accent-gold/10 border-nexus-accent-gold/20 text-nexus-accent-gold'
-                  }`}>
-                    <ShieldCheck size={8} />
-                    <span className="font-black text-[6px] tracking-[1px] uppercase">
-                      {isIsolated ? 'HARDENED_E2EE' : 'SECURE_E2EE'}
-                    </span>
-                  </div>
-               </div>
-               <div className="flex items-center space-x-2 w-full truncate">
-                  <span className="text-nexus-ink-muted opacity-50 font-black text-[7px] tracking-[4px] uppercase shrink-0">
-                    {isIsolated ? 'ISOLATED_SEC_NET' : 'P2P_TUNNEL::ACT'}
-                  </span>
-                  <div className="w-[1px] h-2 bg-black/[0.05] shrink-0" />
-                  <span className="text-nexus-ink-muted opacity-50 font-black text-[7px] tracking-[4px] uppercase truncate">
-                    EPOCH_{currentEpoch}
-                  </span>
-               </div>
+      {/* Tactical Header - Ultra-Slim Glassmorphism Consistency (Shifted below global header) */}
+      <div className="absolute top-0 pt-0 left-0 right-0 z-[1000] flex items-center justify-between h-9 px-4 bg-nexus-surface/90 backdrop-blur-md border-b border-nexus-border transition-all">
+        <div className="flex items-center space-x-3 overflow-hidden flex-1">
+          <button 
+            onClick={onBack} 
+            className="w-7 h-7 flex items-center justify-center rounded-full bg-nexus-bg border border-nexus-border text-nexus-ink-muted hover:text-nexus-ink transition-all cursor-pointer active:scale-95 shrink-0"
+          >
+            <ChevronLeft size={12} strokeWidth={3} />
+          </button>
+          
+          <div className="flex items-center space-x-2 min-w-0 flex-1">
+             <h2 className="text-nexus-ink font-sans text-xs font-black tracking-tight uppercase truncate cursor-pointer" onClick={() => isGroup && setShowGroupPanel(true)}>
+               {targetName}
+             </h2>
+             <div className={`w-1.5 h-1.5 shrink-0 rounded-full ${isIsolated ? 'bg-[#FF3B30]' : 'bg-nexus-accent-cyan animate-pulse'}`} />
+             
+             {/* E2EE DYNAMIC COLOR-CODED BADGE */}
+             <div className={`flex items-center space-x-1 px-1.5 py-0.5 border rounded-[2px] shrink-0 ${
+               isIsolated 
+                 ? 'bg-[#FF3B30]/10 border-[#FF3B30]/30 text-[#FF3B30]' 
+                 : 'bg-nexus-accent-gold/10 border-nexus-accent-gold/20 text-nexus-accent-gold'
+             }`}>
+               <ShieldCheck size={7} />
+               <span className="font-black text-[6px] tracking-[0.5px] uppercase">
+                 {isIsolated ? 'HARDENED' : 'SECURE'}
+               </span>
+             </div>
+             
+             <span className="text-nexus-ink-muted opacity-40 font-mono text-[7px] tracking-tighter truncate">
+                EPOCH_{currentEpoch}
+             </span>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-0.5">
+           <button 
+             onClick={onLightningCall}
+             className="w-7 h-7 flex items-center justify-center text-nexus-ink-muted hover:text-nexus-ink transition-all cursor-pointer rounded-full active:scale-95"
+           >
+             <Video size={12} strokeWidth={2.5} />
+           </button>
+           <button 
+             onClick={() => setShowGroupPanel(true)}
+             className="w-7 h-7 flex items-center justify-center text-nexus-ink-muted hover:text-nexus-ink transition-all cursor-pointer rounded-full active:scale-95"
+           >
+             <MoreHorizontal size={12} strokeWidth={2.5} />
+           </button>
+        </div>
+      </div>
+
+      {/* Breadcrumb / Telemetry Strip - Decoupled beneath absolute header */}
+      <div className="mt-9 h-6 flex items-center px-4 border-b border-nexus-border/40 justify-between bg-nexus-bg/50 overflow-hidden shrink-0">
+         <div className="flex items-center min-w-0">
+            <Terminal size={8} className="text-nexus-ink-muted opacity-30 mr-2" />
+            <span className="text-nexus-ink-muted font-mono text-[7px] truncate tracking-tighter opacity-60">
+               {isOfflineMode ? `SHADOW_VAULT` : (isGroup ? `CONSENSUS_ACT` : `TUNNEL::${targetName.toUpperCase()}`)}
+            </span>
+         </div>
+         
+         <div className="flex items-center space-x-2 opacity-30">
+            <div className="flex items-center">
+               <Shield size={7} className="text-nexus-accent-blue mr-1" />
+               <span className="text-nexus-ink font-bold text-[6px] uppercase tracking-[1px]">E2EE</span>
             </div>
-          </div>
-
-          <div className="flex items-center space-x-1 shrink-0">
-             <button 
-               onClick={onLightningCall}
-               className="w-9 h-9 flex items-center justify-center text-nexus-ink-muted hover:text-nexus-ink transition-all cursor-pointer rounded-full active:scale-95"
-             >
-               <Video size={16} strokeWidth={2} />
-             </button>
-             <button 
-               onClick={() => setShowGroupPanel(true)}
-               className="w-9 h-9 flex items-center justify-center text-nexus-ink-muted hover:text-nexus-ink transition-all cursor-pointer rounded-full active:scale-95"
-             >
-               <MoreHorizontal size={16} strokeWidth={2} />
-             </button>
-          </div>
-        </div>
-
-        <div className="h-8 flex items-center px-0 mt-1 border-t border-nexus-border justify-between overflow-hidden">
-           <div className="flex items-center min-w-0">
-              <Terminal size={10} className="text-nexus-ink-muted opacity-30 mr-2" />
-              <span className="text-nexus-ink-muted opacity-30 font-mono text-[7px] uppercase tracking-[1px] mr-2 font-black">Path://</span>
-              <span className="text-nexus-ink-muted font-mono text-[8px] truncate tracking-tighter opacity-60">
-                 {isOfflineMode ? `ShadowDrop_Vault_Active::OFFLINE_MAIL_ACTIVE` : (isGroup ? `Consensus_Active::Epoch_${currentEpoch}` : `Shard_Tunnel::${targetName.toUpperCase()}_NODE`)}
-              </span>
-           </div>
-           
-           <div className="flex items-center space-x-3 opacity-30">
-              <div className="flex items-center space-x-1">
-                 <Shield size={9} className="text-nexus-accent-blue" />
-                 <span className="text-nexus-ink font-bold text-[7px] uppercase tracking-[1px]">E2EE</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                 <BarChart3 size={9} className="text-nexus-ink" />
-                 <span className="text-nexus-ink font-bold text-[7px] uppercase tracking-[1px]">98ms</span>
-              </div>
-           </div>
-        </div>
+            <div className="flex items-center border-l border-nexus-border pl-2">
+               <span className="text-nexus-ink font-mono text-[6px] uppercase">98ms</span>
+            </div>
+         </div>
       </div>
 
       {/* Message Stream */}

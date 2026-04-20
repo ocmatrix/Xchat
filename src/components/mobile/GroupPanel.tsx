@@ -42,7 +42,7 @@ export const GroupPanel = ({ onClose, members: initialMembers, groupName, isIsol
     }
     const newVal = !policies[policy];
     setPolicies(prev => ({ ...prev, [policy]: newVal }));
-    showToast(`POLICY_UPDATED::${policy.toUpperCase()}_${newVal ? 'LOCKED' : 'RELEASED'}`);
+    showToast(`POLICY_UPDATED::${String(policy).toUpperCase()}_${newVal ? 'LOCKED' : 'RELEASED'}`);
   };
 
   const handleRoleChange = (did: string, nextRole: 'ADMIN' | 'NODE') => {

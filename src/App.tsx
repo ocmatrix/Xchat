@@ -185,60 +185,58 @@ export default function App() {
       {/* Container - Institutional Digital Hub Redesign */}
       <div className="w-full h-[100dvh] sm:w-[393px] sm:h-[852px] bg-nexus-bg flex flex-col relative sm:border sm:border-nexus-border sm:rounded-[6px] overflow-hidden transition-colors duration-500 shadow-2xl">
         
-        {/* Header Area - Highly Compressed stacked rows */}
-        {!isConversationOpen && (
-          <div className="sticky top-0 z-[150] w-full bg-nexus-surface border-b border-nexus-border flex flex-col pt-10 pb-0 px-4 transition-colors duration-500">
-            
-            {/* Row 1: Title & Icons */}
-            <div className="flex justify-between items-center w-full">
-               <h1 className="text-[22px] font-black text-nexus-ink uppercase tracking-tighter leading-none mb-0 font-sans">
-                 DOTCOM
-               </h1>
-               <div className="flex items-center space-x-1">
-                  <button 
-                    onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-                    className="w-7 h-7 flex items-center justify-center rounded-full text-nexus-ink-muted hover:text-nexus-ink hover:bg-nexus-ink/5 transition-all cursor-pointer active:scale-90"
-                  >
-                    {theme === 'dark' ? <Sun size={13} strokeWidth={2.5} /> : <Moon size={13} strokeWidth={2.5} />}
-                  </button>
-                  <button 
-                    className="w-7 h-7 flex items-center justify-center rounded-full text-nexus-accent-blue hover:text-nexus-accent-blue hover:bg-nexus-accent-blue/5 transition-all cursor-pointer active:scale-90"
-                  >
-                    <Activity size={13} strokeWidth={2.5} />
-                  </button>
-               </div>
-            </div>
-            
-            {/* Row 2: Encrypted Status - Flush beneath title */}
-            <div className="flex items-center space-x-1.5 mt-[1px] leading-none py-0">
-               <div className="w-1.5 h-1.5 bg-nexus-accent-cyan rounded-full shadow-[0_0_8px_rgba(0,209,255,0.6)] shrink-0"></div>
-               <span className="text-nexus-accent-blue text-[8.5px] tracking-[1.5px] uppercase font-black font-sans leading-none">ENCRYPTED_SYNC</span>
-            </div>
+        {/* Header Area - Highly Compressed stacked rows - PERSISTENT GLOBALLY */}
+        <div className="absolute top-0 left-0 right-0 z-[5000] w-full bg-nexus-surface/60 backdrop-blur-md border-b border-nexus-border flex items-center justify-between h-9 px-4 transition-all duration-500">
+          
+          {/* Ultra-Slim Unified Row: Branding & Status & Telemetry */}
+          <div className="flex items-center space-x-3">
+             <h1 className="text-[14px] font-black text-nexus-ink uppercase tracking-tight font-sans leading-none">
+               DOTCOM
+             </h1>
+             <div className="h-3 w-[1px] bg-nexus-border"></div>
+             <div className="flex items-center space-x-2 font-mono leading-none">
+                <div className="flex items-center space-x-1.5">
+                  <div className="w-1.5 h-1.5 bg-[#00FF41] rounded-full shadow-[0_0_8px_rgba(0,255,65,0.6)] shrink-0"></div>
+                  <span className="text-nexus-accent-blue text-[8px] tracking-[0.5px] uppercase font-black">ENCRYPTED_SYNC</span>
+                </div>
+                <span className="text-nexus-ink-alt text-[8px] font-bold tracking-tighter opacity-50">L: 14MS S: 0x4B2</span>
+             </div>
+          </div>
+          
+          {/* System Controls */}
+          <div className="flex items-center space-x-0.5">
+             <button 
+               onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+               className="w-6 h-6 flex items-center justify-center rounded-full text-nexus-ink-muted hover:text-nexus-ink transition-all cursor-pointer active:scale-90"
+             >
+               {theme === 'dark' ? <Sun size={11} strokeWidth={2.5} /> : <Moon size={11} strokeWidth={2.5} />}
+             </button>
+             <button 
+               className="w-6 h-6 flex items-center justify-center rounded-full text-nexus-accent-blue hover:bg-nexus-accent-blue/5 transition-all cursor-pointer active:scale-90"
+             >
+               <Activity size={11} strokeWidth={2.5} />
+             </button>
+          </div>
+        </div>
 
-            {/* Row 3: Telemetry Codes - Flush beneath status */}
-            <div className="flex items-center space-x-2 font-mono font-black py-[2px] leading-none">
-                <span className="text-nexus-ink-alt text-[8px]">L: 14MS</span>
-                <span className="text-nexus-ink-alt text-[8px]">S: 0x4B2</span>
-            </div>
-
-            {/* Compressed Search Bar - height < 32px */}
-            <div className="mt-1 pb-2">
-               <div className="relative flex items-center group w-full bg-nexus-bg border border-nexus-border rounded-[2px] h-[30px] px-3">
-                  <div className="text-nexus-ink-muted opacity-60 mr-2 shrink-0">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                  </div>
-                  <input 
-                    type="text" 
-                    placeholder="Search..."
-                    className="w-full bg-transparent border-none text-[11px] outline-none text-nexus-ink placeholder:text-nexus-ink-muted/30 font-sans"
-                  />
-               </div>
-            </div>
+        {/* Search Bar - Decoupled to sit below fixed slim header - ONLY ON CHATS TAB */}
+        {!isConversationOpen && activeTab === 'CHATS' && (
+          <div className="absolute top-9 left-0 right-0 z-[4000] px-4 pb-2 pt-2 bg-nexus-bg border-b border-nexus-border/50 transition-all">
+             <div className="relative flex items-center group w-full bg-nexus-surface/50 border border-nexus-border rounded-[2px] h-[28px] px-3">
+                <div className="text-nexus-ink-muted opacity-60 mr-2 shrink-0">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </div>
+                <input 
+                  type="text" 
+                  placeholder="Search..."
+                  className="w-full bg-transparent border-none text-[10px] outline-none text-nexus-ink placeholder:text-nexus-ink-muted/30 font-sans uppercase tracking-[1px] font-bold"
+                />
+             </div>
           </div>
         )}
 
         {/* Screen Content - Zero Waste */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col bg-nexus-bg transition-colors duration-500">
+        <div className={`flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col bg-nexus-bg transition-colors duration-500 ${activeTab === 'CHATS' && !isConversationOpen ? 'pt-[70px]' : 'pt-[36px]'}`}>
           {!isInitialized ? (
             <SecuritySetup onComplete={handleSetupComplete} />
           ) : (
@@ -261,10 +259,18 @@ export default function App() {
                       />
                     )}
                     {activeTab === 'NODES' && (
-                      <NodeRegistry 
-                        contacts={MOCK_CONTACTS.filter(c => !c.isGroup)} 
-                        onDiscovery={() => setOverlayScreen('PeerDiscovery')}
-                      />
+                      <div className="relative h-full flex-1">
+                        <NodeRegistry 
+                          contacts={MOCK_CONTACTS.filter(c => !c.isGroup)} 
+                          onDiscovery={() => setOverlayScreen('PeerDiscovery')}
+                        />
+                        {/* Centered Floating Search Button with Dotted Grid Background */}
+                        <div className="absolute bottom-[65px] left-0 right-0 h-[80px] z-[100] pointer-events-none flex items-center justify-center bg-[linear-gradient(rgba(212,175,55,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(212,175,55,0.05)_1px,transparent_1px)] bg-[size:10px_10px] [mask-image:linear-gradient(to_top,black,transparent)]">
+                           <button className="w-12 h-12 bg-nexus-bg border border-nexus-border rounded-full flex items-center justify-center text-nexus-ink-muted hover:text-nexus-ink shadow-[0_0_20px_rgba(0,0,0,0.5)] transition-all active:scale-90 cursor-pointer pointer-events-auto backdrop-blur-sm">
+                              <Search size={18} strokeWidth={2.5} />
+                           </button>
+                        </div>
+                      </div>
                     )}
                     {activeTab === 'SOVEREIGNTY' && (
                       <ProfileSettings 
@@ -279,7 +285,7 @@ export default function App() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="w-full shrink-0 min-h-full z-50 flex flex-col bg-nexus-bg"
+                    className="absolute inset-x-0 bottom-0 top-[36px] z-50 flex flex-col bg-nexus-bg"
                   >
                     <Conversation 
                       messages={MOCK_MESSAGES} 
