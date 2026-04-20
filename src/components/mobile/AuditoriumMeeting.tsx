@@ -4,7 +4,7 @@ import {
   Users, Mic, MicOff, Hand, Video, VideoOff, 
   Settings, X, Check, XCircle, Shield, 
   Activity, Signal, Lock, ShieldAlert,
-  MoreVertical, UserMinus
+  MoreVertical, UserMinus, Ban
 } from 'lucide-react';
 
 interface AuditoriumMeetingProps {
@@ -32,6 +32,7 @@ export const AuditoriumMeeting: React.FC<AuditoriumMeetingProps> = ({
   const [showApprovalFlash, setShowApprovalFlash] = useState(false);
   const [blockedConnections, setBlockedConnections] = useState(0);
   const [activeMenuDid, setActiveMenuDid] = useState<string | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ action: 'remove' | 'block', did: string } | null>(null);
 
   // Connection Error State
   const [mediaError, setMediaError] = useState<{ title: string; message: string } | null>(null);
@@ -213,6 +214,19 @@ export const AuditoriumMeeting: React.FC<AuditoriumMeetingProps> = ({
     setActiveMenuDid(null);
   };
 
+  const handleRemoveParticipant = (did: string) => {
+    console.log(`[CRDT_STATE] Removing ${did} from room`);
+    setParticipants(prev => prev.filter(p => p.did !== did));
+    setConfirmModal(null);
+  };
+
+  const handleBlockParticipant = (did: string) => {
+    console.log(`[CRDT_STATE] Blocking ${did} - adding to blacklist`);
+    setBlockedConnections(prev => prev + 1);
+    setParticipants(prev => prev.filter(p => p.did !== did));
+    setConfirmModal(null);
+  };
+
   const handleLockRoom = () => {
     setIsLocked(!isLocked);
     console.log(`[GOSSIP_SWARM] Broadcast: ROOM_LOCKED=${!isLocked}`);
@@ -236,6 +250,52 @@ export const AuditoriumMeeting: React.FC<AuditoriumMeetingProps> = ({
             exit={{ opacity: 0 }}
             className="absolute inset-0 z-50 bg-[#00D1FF] mix-blend-screen pointer-events-none"
           />
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {confirmModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-sm bg-black border border-white/10 rounded-md shadow-2xl p-5 flex flex-col items-center text-center"
+            >
+              <div className="w-12 h-12 bg-[#EF4444]/10 rounded-full flex items-center justify-center mb-4">
+                <ShieldAlert size={24} className="text-[#EF4444]" />
+              </div>
+              <h3 className="text-white font-bold text-sm tracking-wide mb-2 uppercase">
+                {confirmModal.action === 'remove' ? 'Remove Participant?' : 'Block Connection?'}
+              </h3>
+              <p className="text-white/60 text-[11px] mb-6 font-mono leading-relaxed px-4">
+                {confirmModal.action === 'remove' 
+                  ? `Are you sure you want to forcibly disconnect ${confirmModal.did} from the auditorium?` 
+                  : `Are you sure you want to block ${confirmModal.did}? They will not be able to rejoin the current mesh.`
+                }
+              </p>
+              <div className="flex w-full space-x-3">
+                <button 
+                  onClick={() => setConfirmModal(null)} 
+                  className="flex-1 py-3 text-[10px] font-bold tracking-[1px] uppercase border border-white/10 rounded-sm hover:bg-white/5 transition-colors text-white/70"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => confirmModal.action === 'remove' ? handleRemoveParticipant(confirmModal.did) : handleBlockParticipant(confirmModal.did)} 
+                  className="flex-1 py-3 text-[10px] font-bold tracking-[1px] uppercase bg-[#EF4444] text-white rounded-sm hover:bg-[#DC2626] transition-colors"
+                >
+                  Confirm
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -387,10 +447,24 @@ export const AuditoriumMeeting: React.FC<AuditoriumMeetingProps> = ({
                               <div className="h-[1px] bg-white/10 my-1 box-border w-full" />
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleDemote(speaker.did); }}
-                                className="px-3 py-2 flex items-center space-x-3 hover:bg-[#EF4444]/20 transition-colors text-left text-[#EF4444]"
+                                className="px-3 py-2 flex items-center space-x-3 hover:bg-[#D4AF37]/20 transition-colors text-left text-[#D4AF37]"
                               >
                                 <UserMinus size={10} />
                                 <span className="text-[9px] font-bold uppercase tracking-wider">Demote</span>
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setConfirmModal({ action: 'remove', did: speaker.did }); setActiveMenuDid(null); }}
+                                className="px-3 py-2 flex items-center space-x-3 hover:bg-[#EF4444]/20 transition-colors text-left text-[#EF4444]"
+                              >
+                                <XCircle size={10} />
+                                <span className="text-[9px] font-bold uppercase tracking-wider">Remove</span>
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setConfirmModal({ action: 'block', did: speaker.did }); setActiveMenuDid(null); }}
+                                className="px-3 py-2 flex items-center space-x-3 hover:bg-[#EF4444]/20 transition-colors text-left text-[#EF4444]"
+                              >
+                                <Ban size={10} />
+                                <span className="text-[9px] font-bold uppercase tracking-wider">Block</span>
                               </button>
                             </motion.div>
                           </>

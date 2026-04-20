@@ -9,8 +9,7 @@ import {
 
 type SortCriteria = 'name' | 'status' | 'timestamp';
 
-export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigateToNodes }: any) => {
-  const [searchQuery, setSearchQuery] = useState("");
+export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigateToNodes, searchQuery: externalSearchQuery }: any) => {
   const [sortBy, setSortBy] = useState<SortCriteria>('timestamp');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newContactDID, setNewContactDID] = useState("");
@@ -41,8 +40,8 @@ export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigat
 
   const processedContacts = useMemo(() => {
     let result = contacts.filter(c => 
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      c.did.toLowerCase().includes(searchQuery.toLowerCase())
+      c.name.toLowerCase().includes(externalSearchQuery.toLowerCase()) || 
+      c.did.toLowerCase().includes(externalSearchQuery.toLowerCase())
     );
 
     // Sorting logic
@@ -61,52 +60,12 @@ export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigat
     });
 
     return result;
-  }, [contacts, searchQuery, sortBy]);
+  }, [contacts, externalSearchQuery, sortBy]);
 
   return (
     <div className="bg-transparent flex flex-col font-sans shrink-0 min-h-full pb-[50px]">
       
       <div className="px-0 pb-1">
-        <div className="flex items-center justify-between px-4 my-2">
-           <div className="flex items-center space-x-1.5 opacity-60">
-              <BarChart3 size={10} className="text-nexus-ink lg:hidden xl:block" />
-              <span className="text-nexus-ink font-bold text-[9px] tracking-[2px] uppercase hidden sm:block">ACTIVE</span>
-           </div>
-           
-           <div className="flex items-center space-x-3 overflow-hidden">
-              {/* SORT CONTROLS */}
-              <div className="flex bg-nexus-surface border border-nexus-border rounded-sm overflow-hidden shrink-0 shadow-sm">
-                 <button 
-                   onClick={() => setSortBy('timestamp')} 
-                   className={`px-2 py-1 text-[7px] font-black tracking-[1px] uppercase transition-all flex items-center ${sortBy === 'timestamp' ? 'bg-nexus-ink/10 text-nexus-ink' : 'text-nexus-ink-muted hover:bg-nexus-bg opacity-60'}`}
-                 >
-                    LATEST
-                 </button>
-                 <button 
-                   onClick={() => setSortBy('status')} 
-                   className={`px-2 py-1 border-l border-nexus-border text-[7px] font-black tracking-[1px] uppercase transition-all flex items-center ${sortBy === 'status' ? 'bg-nexus-accent-cyan/10 text-nexus-accent-cyan' : 'text-nexus-ink-muted hover:bg-nexus-bg opacity-60'}`}
-                 >
-                    ONLINE
-                 </button>
-                 <button 
-                   onClick={() => setSortBy('name')} 
-                   className={`px-2 py-1 border-l border-nexus-border text-[7px] font-black tracking-[1px] uppercase transition-all flex items-center ${sortBy === 'name' ? 'bg-nexus-ink/10 text-nexus-ink' : 'text-nexus-ink-muted hover:bg-nexus-bg opacity-60'}`}
-                 >
-                    A-Z
-                 </button>
-              </div>
-
-              <button 
-                onClick={() => setShowAddModal(true)}
-                className="flex items-center space-x-1.5 px-2 py-1 bg-nexus-accent-blue/10 border border-nexus-accent-blue/20 rounded-sm hover:bg-nexus-accent-blue/20 transition-all transition-all active:scale-95 group"
-              >
-                <UserPlus size={10} className="text-nexus-accent-blue" />
-                <span className="text-nexus-accent-blue font-black text-[8px] uppercase tracking-[1px]">ADD_PEER</span>
-              </button>
-              <span className="text-nexus-ink-muted text-[8px] font-black tracking-widest font-mono shrink-0">{processedContacts.length} ENTITIES</span>
-           </div>
-        </div>
-
         <div className="space-y-0 bg-nexus-surface shadow-[0_10px_30px_rgba(0,0,0,0.02)]">
           {processedContacts.map((item, index) => (
             <motion.div 

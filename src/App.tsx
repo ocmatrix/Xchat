@@ -9,7 +9,7 @@ import { PeerDiscovery } from './components/mobile/PeerDiscovery';
 import { NodeRegistry } from './components/mobile/NodeRegistry';
 import { AuditoriumMeeting } from './components/mobile/AuditoriumMeeting';
 import { SecuritySetup } from './components/mobile/SecuritySetup';
-import { MessageSquare, Users, Shield, ShieldAlert, Plus, Radar, Sun, Moon, Battery, Wifi, Signal, Activity, Cpu, Hexagon } from 'lucide-react';
+import { MessageSquare, Users, Shield, ShieldAlert, Plus, Radar, Sun, Moon, Battery, Wifi, Signal, Activity, Cpu, Hexagon, Search, UserPlus, X } from 'lucide-react';
 
 // Global Safety Shim for Sovereign Node Environment
 if (typeof window !== 'undefined') {
@@ -135,10 +135,13 @@ const MOCK_DEVICES = [
   { id: '2', name: 'Backup Node (MacBook Pro)', lastSeen: '2 HOURS AGO', ip: '10.0.0.15', isCurrent: false },
 ];
 
-type MainTab = 'CHATS' | 'NODES' | 'SOVEREIGNTY';
+type MainTab = 'LATEST' | 'ONLINE' | 'A-Z';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<MainTab>('CHATS');
+  const [activeTab, setActiveTab] = useState<MainTab>('LATEST');
+  const [currentView, setCurrentView] = useState<'CHAT' | 'NODES' | 'SECURITY'>('CHAT'); // ADDED
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isConversationOpen, setIsConversationOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [myDid, setMyDid] = useState("");
@@ -180,63 +183,119 @@ export default function App() {
     }
   };
 
-  return (
-    <div className="min-h-screen w-full bg-nexus-bg flex items-center justify-center font-sans transition-colors duration-500">
-      {/* Container - Institutional Digital Hub Redesign */}
-      <div className="w-full h-[100dvh] sm:w-[393px] sm:h-[852px] bg-nexus-bg flex flex-col relative sm:border sm:border-nexus-border sm:rounded-[6px] overflow-hidden transition-colors duration-500 shadow-2xl">
-        
-        {/* Header Area - Highly Compressed stacked rows - PERSISTENT GLOBALLY */}
-        <div className="absolute top-0 left-0 right-0 z-[5000] w-full bg-nexus-surface/60 backdrop-blur-md border-b border-nexus-border flex items-center justify-between h-9 px-4 transition-all duration-500">
-          
-          {/* Ultra-Slim Unified Row: Branding & Status & Telemetry */}
-          <div className="flex items-center space-x-3">
-             <h1 className="text-[14px] font-black text-nexus-ink uppercase tracking-tight font-sans leading-none">
-               DOTCOM
-             </h1>
-             <div className="h-3 w-[1px] bg-nexus-border"></div>
-             <div className="flex items-center space-x-2 font-mono leading-none">
-                <div className="flex items-center space-x-1.5">
-                  <div className="w-1.5 h-1.5 bg-[#00FF41] rounded-full shadow-[0_0_8px_rgba(0,255,65,0.6)] shrink-0"></div>
-                  <span className="text-nexus-accent-blue text-[8px] tracking-[0.5px] uppercase font-black">ENCRYPTED_SYNC</span>
-                </div>
-                <span className="text-nexus-ink-alt text-[8px] font-bold tracking-tighter opacity-50">L: 14MS S: 0x4B2</span>
-             </div>
-          </div>
-          
-          {/* System Controls */}
-          <div className="flex items-center space-x-0.5">
-             <button 
-               onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-               className="w-6 h-6 flex items-center justify-center rounded-full text-nexus-ink-muted hover:text-nexus-ink transition-all cursor-pointer active:scale-90"
-             >
-               {theme === 'dark' ? <Sun size={11} strokeWidth={2.5} /> : <Moon size={11} strokeWidth={2.5} />}
-             </button>
-             <button 
-               className="w-6 h-6 flex items-center justify-center rounded-full text-nexus-accent-blue hover:bg-nexus-accent-blue/5 transition-all cursor-pointer active:scale-90"
-             >
-               <Activity size={11} strokeWidth={2.5} />
-             </button>
-          </div>
-        </div>
+  const filteredContacts = MOCK_CONTACTS.filter(c => {
+    if (activeTab === 'ONLINE') return c.online;
+    return true;
+  }).sort((a, b) => {
+    if (activeTab === 'A-Z') return a.name.localeCompare(b.name);
+    return 0;
+  });
 
-        {/* Search Bar - Decoupled to sit below fixed slim header - ONLY ON CHATS TAB */}
-        {!isConversationOpen && activeTab === 'CHATS' && (
-          <div className="absolute top-9 left-0 right-0 z-[4000] px-4 pb-2 pt-2 bg-nexus-bg border-b border-nexus-border/50 transition-all">
-             <div className="relative flex items-center group w-full bg-nexus-surface/50 border border-nexus-border rounded-[2px] h-[28px] px-3">
-                <div className="text-nexus-ink-muted opacity-60 mr-2 shrink-0">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                </div>
-                <input 
-                  type="text" 
-                  placeholder="Search..."
-                  className="w-full bg-transparent border-none text-[10px] outline-none text-nexus-ink placeholder:text-nexus-ink-muted/30 font-sans uppercase tracking-[1px] font-bold"
-                />
-             </div>
+  return (
+    <div className={`min-h-screen w-full flex items-center justify-center font-sans transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-[#F4F4F5] bg-[radial-gradient(#D4D4D8_1px,transparent_1px)] [background-size:12px_12px]'}`}>
+      {/* Container - Command Center Architecture */}
+      <div className={`w-full h-[100dvh] sm:w-[393px] sm:h-[852px] ${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-transparent'} flex flex-col relative sm:border sm:border-black/10 dark:sm:border-white/10 sm:rounded-[6px] overflow-hidden transition-colors duration-500 shadow-2xl`}>
+        
+        {/* Row 1: System Telemetry & Status (h-9) - HIDDEN UNTIL INITIALIZED */}
+        {isInitialized && (
+          <div className="absolute top-0 left-0 right-0 z-[5000] w-full bg-white/40 dark:bg-black/40 backdrop-blur-md border-b flex items-center justify-between h-9 px-4 transition-all duration-500" style={{ borderColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+            
+            {/* Left: Brand + Active Dot + Telemetry */}
+            <div className="flex items-center space-x-3">
+              <h1 className="text-[14px] font-black text-black dark:text-white uppercase tracking-tight font-sans leading-none">
+                DOTCOM
+              </h1>
+              <div className="flex items-center space-x-2 font-mono leading-none">
+                  <div className="w-1.5 h-1.5 bg-[#00FF41] rounded-full shadow-[0_0_8px_rgba(0,255,65,0.6)] shrink-0"></div>
+                  <span className="text-[#6B7280] dark:text-[#9CA3AF] text-[10px] font-bold tracking-tighter">L: 14MS S: 0x4B2</span>
+              </div>
+            </div>
+            
+            {/* Right: System Utilities */}
+            <div className="flex items-center space-x-2">
+              <button 
+                onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+                className="flex items-center justify-center text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-all cursor-pointer active:scale-90"
+              >
+                <Moon size={12} strokeWidth={2.5} />
+              </button>
+              <button 
+                className="flex items-center justify-center text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-all cursor-pointer active:scale-90"
+              >
+                <Activity size={12} strokeWidth={2.5} />
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Screen Content - Zero Waste */}
-        <div className={`flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col bg-nexus-bg transition-colors duration-500 ${activeTab === 'CHATS' && !isConversationOpen ? 'pt-[70px]' : 'pt-[36px]'}`}>
+        {/* Row 2: Command Toolbar (h-9) - HIDDEN UNTIL INITIALIZED */}
+        {isInitialized && !isConversationOpen && (
+          <div className="absolute top-9 left-0 right-0 z-[4000] h-9 bg-white/40 dark:bg-black/40 backdrop-blur-md border-b flex items-center justify-between px-4 transition-all duration-500" style={{ borderColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+            {/* Left: Navigation Segments */}
+            <div className="flex items-center space-x-1">
+                {(['LATEST', 'ONLINE', 'A-Z'] as MainTab[]).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-2 h-6 flex items-center justify-center text-[9px] font-sans font-bold uppercase tracking-wider transition-colors border ${activeTab === tab ? 'border-black/20 dark:border-white/20 bg-black/5 dark:bg-white/10 text-black dark:text-white rounded-[2px]' : 'border-transparent text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white cursor-pointer'}`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+            </div>
+
+            {/* Right: Interactive Utilities - ONLY ON CHAT TAB */}
+            {currentView === 'CHAT' && (
+              <div className="flex items-center space-x-2">
+                  <button 
+                      onClick={() => {
+                        setIsSearchExpanded(!isSearchExpanded);
+                        if (isSearchExpanded) setSearchQuery("");
+                      }} 
+                      className={`text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors cursor-pointer flex items-center justify-center mr-1 ${isSearchExpanded ? 'text-[#1E40AF]' : ''}`}
+                  >
+                      <Search size={12} strokeWidth={2.5} />
+                  </button>
+
+                  <button className="w-5 h-5 bg-[#1E40AF] hover:bg-[#1D4ED8] flex items-center justify-center rounded-[2px] text-white shadow-sm transition-colors cursor-pointer border border-[#1E3A8A]">
+                      <UserPlus size={10} strokeWidth={2.5} />
+                  </button>
+
+                  <div className="flex items-center justify-center space-x-1 ml-1 text-[#6B7280] dark:text-[#9CA3AF] bg-black/5 dark:bg-white/5 h-5 px-1.5 rounded-[2px] border border-black/10 dark:border-white/10" title="Active Entities">
+                      <Hexagon size={9} strokeWidth={2.5} />
+                      <span className="font-mono text-[10px] font-bold leading-none mt-px tracking-tighter">
+                          {filteredContacts.length}
+                      </span>
+                  </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Row 3: Search Buffer (h-9) - ONLY WHEN EXPANDED */}
+        {!isConversationOpen && isSearchExpanded && (
+           <div className="absolute top-[72px] left-0 right-0 z-[3500] h-9 bg-white/40 dark:bg-black/40 backdrop-blur-md border-b flex items-center px-4 transition-all duration-300" style={{ borderColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+              <div className="flex items-center w-full space-x-2">
+                 <Search size={10} className="text-black/30 dark:text-white/30" />
+                 <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="flex-1 bg-transparent border-none outline-none text-[10px] font-mono text-black dark:text-white placeholder:text-black/20 dark:placeholder:text-white/20 uppercase tracking-widest"
+                    placeholder="INITIATE_SEARCH_PROTOCOL..."
+                    autoFocus
+                 />
+                 {searchQuery && (
+                    <button onClick={() => setSearchQuery("")} className="text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white">
+                       <X size={10} />
+                    </button>
+                 )}
+              </div>
+           </div>
+        )}
+
+        {/* Screen Content - Reclaimed Space */}
+        <div className={`flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col transition-colors duration-500 ${!isConversationOpen ? (isSearchExpanded ? 'pt-[108px]' : 'pt-[72px]') : 'pt-[36px]'}`}>
           {!isInitialized ? (
             <SecuritySetup onComplete={handleSetupComplete} />
           ) : (
@@ -244,40 +303,23 @@ export default function App() {
               <AnimatePresence mode="wait">
                 {!isConversationOpen ? (
                   <motion.div
-                    key={activeTab}
+                    key={currentView}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="w-full flex-col flex shrink-0 min-h-max pb-[50px]"
+                    className="w-full flex-col flex shrink-0 min-h-max"
                   >
-                    {activeTab === 'CHATS' && (
+                    {currentView === 'CHAT' && (
                       <ChatList 
-                        contacts={MOCK_CONTACTS} 
+                        contacts={filteredContacts} 
                         onLightningCall={startMediaCall} 
                         onSelectContact={handleSelectContact}
-                        onNavigateToNodes={() => setActiveTab('NODES')}
+                        onNavigateToNodes={() => setCurrentView('NODES')}
+                        searchQuery={searchQuery}
                       />
                     )}
-                    {activeTab === 'NODES' && (
-                      <div className="relative h-full flex-1">
-                        <NodeRegistry 
-                          contacts={MOCK_CONTACTS.filter(c => !c.isGroup)} 
-                          onDiscovery={() => setOverlayScreen('PeerDiscovery')}
-                        />
-                        {/* Centered Floating Search Button with Dotted Grid Background */}
-                        <div className="absolute bottom-[65px] left-0 right-0 h-[80px] z-[100] pointer-events-none flex items-center justify-center bg-[linear-gradient(rgba(212,175,55,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(212,175,55,0.05)_1px,transparent_1px)] bg-[size:10px_10px] [mask-image:linear-gradient(to_top,black,transparent)]">
-                           <button className="w-12 h-12 bg-nexus-bg border border-nexus-border rounded-full flex items-center justify-center text-nexus-ink-muted hover:text-nexus-ink shadow-[0_0_20px_rgba(0,0,0,0.5)] transition-all active:scale-90 cursor-pointer pointer-events-auto backdrop-blur-sm">
-                              <Search size={18} strokeWidth={2.5} />
-                           </button>
-                        </div>
-                      </div>
-                    )}
-                    {activeTab === 'SOVEREIGNTY' && (
-                      <ProfileSettings 
-                        did={myDid || "did:key:z6MkhaXgBZDvotDkL5257faiztiuC2ZXQTu16ciAoeqgg76"} 
-                        devices={MOCK_DEVICES} 
-                      />
-                    )}
+                    {currentView === 'NODES' && <NodeRegistry contacts={MOCK_CONTACTS} onDiscovery={() => {}} />}
+                    {currentView === 'SECURITY' && <ProfileSettings did={myDid || "did:key:mOCK_1234567890"} devices={MOCK_DEVICES} />}
                   </motion.div>
                 ) : (
                   <motion.div
@@ -302,34 +344,26 @@ export default function App() {
           )}
         </div>
 
-        {/* Bottom Tab Bar - Translucent Frosted Glass */}
-        {!isConversationOpen && (
-          <div className="h-[46px] w-full bg-nexus-surface/80 backdrop-blur-3xl border-t border-nexus-border flex items-start justify-around px-2 shrink-0 z-[200] absolute bottom-0 left-0 transition-colors duration-500">
-             
-             <TabItem 
-              active={activeTab === 'CHATS'} 
-              icon={<MessageSquare size={14} strokeWidth={2.5} />} 
-              label="CHANNELS" 
-              badge={3} 
-              onClick={() => setActiveTab('CHATS')} 
-            />
-            <TabItem 
-              active={activeTab === 'NODES'} 
-              icon={<Cpu size={14} strokeWidth={2.5} />} 
-              label="NODES" 
-              onClick={() => setActiveTab('NODES')} 
-            />
-            <TabItem 
-              active={activeTab === 'SOVEREIGNTY'} 
-              icon={<Hexagon size={14} strokeWidth={2.5} />} 
-              label="CORE" 
-              onClick={() => setActiveTab('SOVEREIGNTY')} 
-            />
-          </div>
-        )}
-
         {/* Home Indicator */}
-        <div className="hidden sm:flex absolute bottom-[2px] left-1/2 -translate-x-1/2 w-[60px] h-[3px] bg-nexus-ink/5 rounded-full z-[210] pointer-events-none" />
+        <div className="hidden sm:flex absolute bottom-[2px] left-1/2 -translate-x-1/2 w-[60px] h-[3px] bg-black/10 dark:bg-white/10 rounded-full z-[310] pointer-events-none" />
+        
+        {/* Bottom Nav */}
+        {isInitialized && (
+            <div className="absolute bottom-0 inset-x-0 h-12 bg-white/50 dark:bg-black/50 backdrop-blur-lg border-t border-black/10 dark:border-white/10 flex items-center justify-around z-[300]">
+                {/* Chat Tab */}
+                <button onClick={() => { setCurrentView('CHAT'); setIsConversationOpen(false); }} className="text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors">
+                    <MessageSquare size={20} />
+                </button>
+                {/* Nodes Tab */}
+                <button onClick={() => { setCurrentView('NODES'); setIsConversationOpen(false); }} className="text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors">
+                    <Radar size={20} />
+                </button>
+                {/* Security/Settings Tab */}
+                <button onClick={() => { setCurrentView('SECURITY'); setIsConversationOpen(false); }} className="text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors">
+                    <Shield size={20} />
+                </button>
+            </div>
+        )}
 
         {/* Overlays (Secure Layers) */}
         <AnimatePresence>
@@ -405,35 +439,6 @@ export default function App() {
 
       </div>
     </div>
-  );
-}
-
-function TabItem({ active, icon, label, badge = 0, onClick }: { active: boolean, icon: React.ReactNode, label: string, badge?: number, onClick: () => void }) {
-  return (
-    <button 
-      onClick={onClick}
-      className="flex flex-col items-center justify-start pt-1 space-y-0.5 bg-transparent border-none cursor-pointer relative px-0 h-full z-10 transition-colors rounded-none w-full max-w-[80px]"
-    >
-      <div className={`relative ${active ? 'text-nexus-accent-blue' : 'text-nexus-ink-muted'}`}>
-        <div className={`transition-all ${active ? 'scale-110 drop-shadow-[0_0_12px_var(--nexus-accent-blue)]' : 'scale-90 opacity-50'}`}>
-           {icon}
-        </div>
-        {badge > 0 && (
-          <div className="absolute -top-1 -right-2 bg-[#FF3B30] text-white font-sans font-black text-[6px] w-[11px] h-[11px] flex items-center justify-center rounded-sm z-10 shadow-[0_0_8px_rgba(255,59,48,0.3)]">
-            {badge}
-          </div>
-        )}
-      </div>
-      <span className={`font-sans text-[8px] font-bold tracking-[3px] uppercase transition-colors leading-none ${active ? 'text-nexus-accent-blue' : 'text-nexus-ink-muted opacity-50'}`}>
-        {label}
-      </span>
-      {active && (
-         <motion.div 
-           layoutId="activeTabIndicator"
-           className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-[2px] bg-nexus-accent-blue shadow-[0_0_10px_var(--nexus-accent-blue)]" 
-         />
-      )}
-    </button>
   );
 }
 
