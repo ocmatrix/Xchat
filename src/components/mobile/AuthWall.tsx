@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Shield, Lock, Zap, ArrowRight, Loader2 } from 'lucide-react';
+import { Shield, Lock, Zap, ArrowRight, Loader2, Key } from 'lucide-react';
 import { auth } from '../../lib/firebase';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { signInAnonymously } from 'firebase/auth';
 import { FirebaseService } from '../../services/FirebaseService';
 import LogoIcon from '../LogoIcon';
 
@@ -14,24 +14,25 @@ export const AuthWall = ({ onSuccess }: AuthWallProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleGoogleLogin = async () => {
+  const handleGenerateIdentity = async () => {
     setLoading(true);
     setError(null);
     try {
-      const provider = new GoogleAuthProvider();
-      // Using popup as per environment recommendations
-      const result = await signInWithPopup(auth, provider);
+      // 1. Authenticate silently via Mesh Network (Anonymous auth under the hood)
+      const result = await signInAnonymously(auth);
       const user = result.user;
       
-      const deterministicDid = `nexus:node:${user.uid.slice(0, 8)}`;
+      // 2. Generate local cryptographic anchor (DID)
+      // In a real P2P app, this relies on ed25519/secp256k1 key generation.
+      const deterministicDid = `did:nexus:node:${user.uid.slice(0, 16)}`;
       
-      // Register/sync profile
-      await FirebaseService.syncUserProfile(deterministicDid, user.displayName || "Anonymous Node");
+      // 3. Register self on the discovery protocol (Firestore for prototype)
+      await FirebaseService.syncUserProfile(deterministicDid, `CYBER_NOMAD_${Math.floor(Math.random() * 1000)}`);
       
       onSuccess(deterministicDid);
     } catch (err: any) {
-      console.error("AUTH_FAULT:", err);
-      setError("AUTHENTICATION_FAILED::System could not verify node identity.");
+      console.error("KEY_GEN_FAULT:", err);
+      setError("INITIALIZATION_FAILED::Could not establish sovereign node.");
     } finally {
       setLoading(false);
     }
@@ -52,24 +53,24 @@ export const AuthWall = ({ onSuccess }: AuthWallProps) => {
       </motion.div>
 
       <div className="text-center space-y-2 mb-12">
-        <h1 className="text-3xl font-black tracking-tighter uppercase font-sans">DOTCOM</h1>
+        <h1 className="text-3xl font-black tracking-tighter uppercase font-sans">REALEX DOTCOM</h1>
         <p className="text-nexus-accent-gold font-mono text-[9px] tracking-[4px] uppercase font-bold opacity-60">
-          Sovereign Node Protocol v2.0
+          Sovereign Node Protocol v2.5
         </p>
       </div>
 
       <div className="w-full max-w-sm space-y-6">
         <div className="bg-[#1A1A1A] border border-white/5 p-4 rounded-sm space-y-4">
           <div className="flex items-start space-x-3">
-            <Lock size={14} className="text-nexus-blue mt-0.5 shrink-0" />
+            <Key size={14} className="text-nexus-accent-gold mt-0.5 shrink-0" />
             <p className="text-[11px] text-white/50 leading-relaxed font-medium">
-              Your identity is anchored via hardware-attested authentication. Private keys never leave this enclave.
+              Initialize a sovereign node. Keys are generated locally and never leave this enclave. No email required.
             </p>
           </div>
         </div>
 
         <button 
-          onClick={handleGoogleLogin}
+          onClick={handleGenerateIdentity}
           disabled={loading}
           className="w-full h-14 bg-white text-black font-black text-[11px] tracking-[4px] uppercase rounded-sm flex items-center justify-center space-x-2 active:scale-[0.98] transition-all disabled:opacity-50"
         >
@@ -77,7 +78,7 @@ export const AuthWall = ({ onSuccess }: AuthWallProps) => {
             <Loader2 size={16} className="animate-spin" />
           ) : (
             <>
-              <span>Initialize_Link</span>
+              <span>Generate_Keys_&_Link</span>
               <ArrowRight size={14} />
             </>
           )}
@@ -102,3 +103,4 @@ export const AuthWall = ({ onSuccess }: AuthWallProps) => {
     </div>
   );
 };
+

@@ -96,7 +96,7 @@ export const NodeRegistry = ({ contacts: initialContacts, onDiscovery }: NodeReg
   );
 
   return (
-    <div className="flex flex-col font-sans shrink-0 min-h-full pb-[50px] bg-transparent">
+    <div className="flex flex-col font-sans flex-1 min-h-0 overflow-y-auto pb-[50px] bg-transparent">
       
       <div className="flex-1 overflow-y-auto scrollbar-hide px-0 pt-0">
         {/* Protocol Settings Section - Compressed */}

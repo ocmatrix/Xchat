@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Info, Trash2, Search, Zap, Command, Sun, Moon, 
@@ -6,8 +6,69 @@ import {
   Fingerprint, ChevronRight, MoreHorizontal,
   MessageSquareOff, Radar, UserPlus, UserCheck, X, RefreshCw
 } from 'lucide-react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 type SortCriteria = 'name' | 'status' | 'timestamp';
+
+const ContactListItem = React.memo(({ item, index, isLast, onSelectContact }: any) => {
+  return (
+    <motion.div>
+      <button
+        className="w-full h-[68px] flex items-center pl-4 text-left cursor-pointer outline-none transition-colors bg-white dark:bg-[#1C1C1E] active:bg-[#F2F2F7] dark:active:bg-[#2C2C2E] group relative border-none"
+        onClick={() => onSelectContact(item)}
+      >
+        <div className="flex items-center space-x-3 flex-1 min-w-0 relative z-10 w-full pr-4">
+           {/* Avatar */}
+           <div className="relative shrink-0">
+             <div className="w-12 h-12 flex items-center justify-center relative rounded-full overflow-hidden bg-[#F2F2F7] dark:bg-[#2C2C2E]">
+               {item.avatar ? (
+                 <img src={item.avatar} alt="Avatar" className="w-full h-full object-cover object-center" referrerPolicy="no-referrer" />
+               ) : (
+                 <span className="text-[#8E8E93] font-medium text-lg">{item.name?.charAt(0) || "U"}</span>
+               )}
+             </div>
+           </div>
+           
+           <div className={`flex-1 min-w-0 h-[68px] flex flex-col justify-center ${!isLast ? 'border-b border-black/5 dark:border-white/5' : ''}`}>
+             <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[16px] font-medium text-black dark:text-white truncate flex-1 leading-tight">
+                   {item.name || "UID_" + item.did.slice(-4)}
+                </span>
+                <div className="flex items-center space-x-2 shrink-0 ml-2">
+                   <span className="text-[#8E8E93] text-sm font-normal">
+                     {item.timestamp}
+                   </span>
+                   <ChevronRight size={14} className="text-[#C7C7CC] dark:text-[#5A5A5E]" />
+                </div>
+             </div>
+             
+             <div className="flex items-center justify-between mt-0.5 leading-snug">
+                <div className="flex-1 min-w-0 flex items-center space-x-2 pr-2">
+                   {/* Truncated message preview */}
+                   <span className="text-[#8E8E93] font-normal text-[15px] truncate block opacity-90">
+                     {item.lastCiphertext || "Photo"}
+                   </span>
+                </div>
+                <AnimatePresence>
+                  {item.unreadCount > 0 && (
+                    <motion.div 
+                      key="unreadBadge"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      className="bg-[#007AFF] text-white font-medium text-[12px] min-w-[20px] h-[20px] flex items-center justify-center rounded-full shrink-0 px-1.5 ml-1 leading-none"
+                    >
+                      {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+             </div>
+           </div>
+        </div>
+      </button>
+    </motion.div>
+  );
+});
 
 export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigateToNodes, searchQuery: externalSearchQuery }: any) => {
   const [sortBy, setSortBy] = useState<SortCriteria>('timestamp');
@@ -16,6 +77,7 @@ export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigat
   const [newContactAlias, setNewContactAlias] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [addSuccess, setAddSuccess] = useState(false);
+  const parentRef = useRef<HTMLDivElement>(null);
 
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,13 +101,13 @@ export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigat
   };
 
   const processedContacts = useMemo(() => {
-    let result = contacts.filter(c => 
+    let result = contacts.filter((c: any) => 
       c.name.toLowerCase().includes(externalSearchQuery.toLowerCase()) || 
       c.did.toLowerCase().includes(externalSearchQuery.toLowerCase())
     );
 
     // Sorting logic
-    result.sort((a, b) => {
+    result.sort((a: any, b: any) => {
       if (sortBy === 'name') {
         return a.name.localeCompare(b.name);
       }
@@ -62,69 +124,53 @@ export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigat
     return result;
   }, [contacts, externalSearchQuery, sortBy]);
 
+  const virtualizer = useVirtualizer({
+    count: processedContacts.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 68,
+    overscan: 5,
+  });
+
+  const handleSelectContactAction = useCallback((contact: any) => {
+    onSelectContact(contact);
+  }, [onSelectContact]);
+
   return (
-    <div className="bg-transparent flex flex-col font-sans shrink-0 min-h-full pb-[50px]">
-      
-      <div className="px-0 pb-1">
-        <div className="space-y-0 bg-transparent">
-          {processedContacts.map((item, index) => (
-            <motion.div 
-              key={item.did} 
-            >
-              <button
-                className="w-full flex items-center pl-4 py-2 text-left cursor-pointer outline-none transition-colors bg-white dark:bg-[#1C1C1E] active:bg-[#F2F2F7] dark:active:bg-[#2C2C2E] group relative border-none"
-                onClick={() => onSelectContact(item)}
+    <div className="bg-transparent flex flex-col font-sans flex-1 min-h-0 relative">
+      <div 
+        ref={parentRef}
+        className="flex-1 overflow-y-auto px-0 pb-12"
+      >
+        <div 
+          style={{
+            height: `${virtualizer.getTotalSize()}px`,
+            width: '100%',
+            position: 'relative',
+          }}
+        >
+          {virtualizer.getVirtualItems().map((virtualItem) => {
+            const item = processedContacts[virtualItem.index];
+            return (
+              <div
+                key={virtualItem.key}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: `${virtualItem.size}px`,
+                  transform: `translateY(${virtualItem.start}px)`,
+                }}
               >
-                <div className="flex items-center space-x-3 flex-1 min-w-0 relative z-10 w-full pr-4">
-                   {/* Avatar */}
-                   <div className="relative shrink-0 py-1">
-                     <div className="w-12 h-12 flex items-center justify-center relative rounded-full overflow-hidden bg-[#F2F2F7] dark:bg-[#2C2C2E]">
-                       {item.avatar ? (
-                         <img src={item.avatar} alt="Avatar" className="w-full h-full object-cover object-center" referrerPolicy="no-referrer" />
-                       ) : (
-                         <span className="text-[#8E8E93] font-medium text-lg">{item.name?.charAt(0) || "U"}</span>
-                       )}
-                     </div>
-                   </div>
-                   
-                   <div className={`flex-1 min-w-0 flex flex-col justify-center py-3 ${index !== processedContacts.length - 1 ? 'border-b border-black/5 dark:border-white/5' : ''}`}>
-                     <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-[16px] font-medium text-black dark:text-white truncate flex-1 leading-tight">
-                           {item.name || "UID_" + item.did.slice(-4)}
-                        </span>
-                        <div className="flex items-center space-x-2 shrink-0 ml-2">
-                           <span className="text-[#8E8E93] text-sm font-normal">
-                             {item.timestamp}
-                           </span>
-                           <ChevronRight size={14} className="text-[#C7C7CC] dark:text-[#5A5A5E]" />
-                        </div>
-                     </div>
-                     
-                     <div className="flex items-center justify-between mt-0.5 leading-snug">
-                        <div className="flex-1 min-w-0 flex items-center space-x-2 pr-2">
-                           {/* Truncated message preview */}
-                           <span className="text-[#8E8E93] font-normal text-[15px] truncate block opacity-90">
-                             {item.lastCiphertext || "Photo"}
-                           </span>
-                        </div>
-                        <AnimatePresence>
-                          {item.unreadCount > 0 && (
-                            <motion.div 
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              exit={{ scale: 0 }}
-                              className="bg-[#007AFF] text-white font-medium text-[12px] min-w-[20px] h-[20px] flex items-center justify-center rounded-full shrink-0 px-1.5 ml-1 leading-none"
-                            >
-                              {item.unreadCount > 99 ? '99+' : item.unreadCount}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                     </div>
-                   </div>
-                </div>
-              </button>
-            </motion.div>
-          ))}
+                <ContactListItem 
+                  item={item} 
+                  index={virtualItem.index} 
+                  isLast={virtualItem.index === processedContacts.length - 1}
+                  onSelectContact={handleSelectContactAction}
+                />
+              </div>
+            );
+          })}
         </div>
         
         {processedContacts.length === 0 && (

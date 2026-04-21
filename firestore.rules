@@ -11,7 +11,7 @@ service cloud.firestore {
     // --- Helper Functions ---
     
     function isSignedIn() {
-      return request.auth != null && request.auth.token.email_verified == true;
+      return request.auth != null;
     }
 
     function isOwner(userId) {
@@ -36,6 +36,7 @@ service cloud.firestore {
       return data.keys().hasAll(['did', 'name', 'status', 'lastSeen', 'updatedAt'])
         && data.did is string && data.did.size() <= 200
         && data.name is string && data.name.size() <= 100
+        && (data.avatar == null || (data.avatar is string && data.avatar.size() <= 500))
         && data.status in ['online', 'offline', 'busy']
         && data.lastSeen == request.time
         && data.updatedAt == request.time;
@@ -56,7 +57,7 @@ service cloud.firestore {
     // 1. Users Collection
     match /users/{userId} {
       allow get: if isSignedIn();
-      allow list: if false; // No directory scraping
+      allow list: if isSignedIn(); // Allow node discovery
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming())
         && incoming().did == existing().did; // Immutable DID
@@ -94,6 +95,11 @@ service cloud.firestore {
       allow create: if isSignedIn() 
         && incoming().expiresAt > request.time
         && incoming().createdBy == request.auth.uid;
+    }
+
+    // 5. System Health
+    match /system/ping {
+      allow get: if true; // Publicly accessible for health checks
     }
   }
 }

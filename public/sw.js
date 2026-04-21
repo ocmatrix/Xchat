@@ -1,8 +1,9 @@
-const CACHE_NAME = 'nexus-terminal-v1';
+const CACHE_NAME = 'realex-terminal-v2.5';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/manifest.json'
+  '/manifest.json',
+  '/favicon.ico'
 ];
 
 // Install Event - caching initial assets

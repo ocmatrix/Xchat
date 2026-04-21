@@ -1,6 +1,6 @@
 {
-  "name": "DOTCOM Sovereignty Protocol",
-  "description": "The Sovereign Communication Protocol featuring real-time node synchronization, secure messaging, and hardware-attested identity management.",
+  "name": "REALEX DOTCOM",
+  "description": "REALEX Sovereign Node Protocol. Secure, hardware-attested communication infrastructure.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": []
 }

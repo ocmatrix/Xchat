@@ -59,6 +59,152 @@ const MosaicPressable = ({ src }: { src: string }) => {
   );
 };
 
+const MemoizedMessageBubble = React.memo(({ item, idx, arr, burningCountdown, setBurningMessageId }: any) => {
+  const isMe = item.sender === 'me';
+  const timestamp = "12:41";
+  const showMetadata = idx === 0 || arr[idx-1].sender !== item.sender;
+
+  if (item.type === 'system') {
+    return (
+      <div className="flex w-full justify-center my-4">
+        <div className="flex flex-col items-center bg-black/5 dark:bg-white/5 rounded-lg px-4 py-2.5 backdrop-blur-sm max-w-[85%] text-center">
+           <span className="text-[#8E8E93] font-medium text-[10px] tracking-wider uppercase mb-1">SYSTEM_EVENT_{item.mlsEpoch || 'LOG'}</span>
+           <span className="text-black dark:text-white text-[11px] leading-snug">{item.text}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.92, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25, mass: 0.8 }}
+      className={`flex flex-col group relative ${showMetadata ? 'mt-3' : 'mt-0.5'} ${isMe ? 'items-end' : 'items-start'}`}
+    >
+      {showMetadata && (
+         <span className={`text-[11px] font-medium text-[#8E8E93] mb-1 ${isMe ? 'mr-1' : 'ml-1'}`}>
+            {isMe ? 'Me' : (item.sender || 'Peer Node')}
+         </span>
+      )}
+      
+      <div className={`flex items-start group relative ${isMe ? 'flex-row-reverse' : ''}`}>
+        <div className={`max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+          {item.type === 'image' || item.type === 'media' ? (
+            <motion.div 
+              whileTap={{ scale: 0.98 }}
+              className="rounded-[16px] overflow-hidden border border-black/5 dark:border-white/5 shadow-sm p-1 bg-white dark:bg-[#1C1C1E] backdrop-blur-md relative"
+            >
+               {item.type === 'media' || !item.text ? (
+                  <div className="w-64 h-40 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[12px] flex flex-col items-center justify-center space-y-3 cursor-pointer group transition-colors">
+                     <div className="w-12 h-12 rounded-full border border-[#C7C7CC] dark:border-[#5A5A5E] flex items-center justify-center group-active:scale-95 transition-transform">
+                        <Image size={24} className="text-[#8E8E93]" />
+                     </div>
+                     <div className="text-center">
+                        <span className="text-[13px] font-medium text-black dark:text-white block mb-1">Encrypted Media</span>
+                        <span className="text-[11px] text-[#8E8E93]">Size: {item.size || '3.2MB'} • Tap to Decrypt</span>
+                     </div>
+                  </div>
+               ) : (
+                  <MosaicPressable src={item.text} />
+               )}
+            </motion.div>
+          ) : (
+            <motion.div 
+              whileTap={{ scale: 0.99 }}
+              className={`px-4 py-2.5 rounded-[18px] shadow-sm transition-all text-[15px] leading-relaxed relative overflow-hidden ${
+              isMe 
+              ? (item.isOffline 
+                  ? 'bg-[#FF9500] text-white shadow-[0_0_15px_rgba(255,149,0,0.15)]' 
+                  : 'bg-[#007AFF] text-white font-normal') + ' rounded-tr-sm' 
+              : 'bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/5 text-black dark:text-white rounded-tl-sm'
+            }`}>
+              {item.isOffline && (
+                <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(rgba(212,175,55,0.1)_1px,transparent_1px)] bg-[size:100%_3px]" />
+              )}
+              {burningCountdown > 0 && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none overflow-hidden">
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 2 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.5 }}
+                    key={burningCountdown}
+                    className="text-white font-black text-2xl drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] z-20"
+                  >
+                     {burningCountdown}
+                  </motion.div>
+                  <motion.div 
+                    initial={{ width: '0%' }}
+                    animate={{ width: `${(1 - burningCountdown / 5) * 100}%` }}
+                    className="absolute inset-0 bg-red-600/40 mix-blend-overlay z-10"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-red-600/20 to-transparent z-0 animate-pulse" />
+                </div>
+              )}
+              {item.text}
+              {item.isOffline && (
+                <div className="mt-1 pt-1 border-t border-nexus-accent-gold/10 flex flex-col space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[6px] font-black uppercase tracking-[2px] text-nexus-accent-gold">STORED IN RELAY SWARM</span>
+                    <div className="flex items-center space-x-1 px-1 py-0.5 bg-nexus-accent-gold/20 border border-nexus-accent-gold/30 rounded-[2px]">
+                      <Clock size={6} className="text-nexus-accent-gold" />
+                      <span className="text-[5px] font-black text-nexus-accent-gold uppercase tracking-[1px]">AUTO-WIPE: {item.ttl || '72H'}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                     {item.nodes?.map((n: string, i: number) => (
+                       <div key={i} className="px-1 py-0.5 bg-nexus-accent-gold/5 border border-nexus-accent-gold/10 rounded-[1px]">
+                          <span className="text-[4px] font-bold text-nexus-accent-gold/40">{n}</span>
+                       </div>
+                     ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </div>
+        
+        {!burningCountdown && (
+          <div className={`flex items-center space-x-2 self-end mb-1 mx-2 transition-opacity duration-300 opacity-20 group-hover:opacity-60 ${isMe ? '' : 'flex-row-reverse'}`}>
+            {item.isOffline ? (
+              <Orbit size={8} className="text-nexus-accent-gold animate-spin-slow" />
+            ) : (
+              <Clock size={8} className="text-nexus-ink-muted" />
+            )}
+            <span className="text-[7px] font-bold text-nexus-ink-muted uppercase tracking-tighter">
+               {typeof item.timestamp === 'number' ? new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}) : (item.timestamp || timestamp)}
+            </span>
+            {isMe && (
+              <button 
+                onClick={() => setBurningMessageId(item.id)}
+                className="text-red-500 opacity-0 group-hover:opacity-40 hover:opacity-100 transition-all bg-transparent border-none p-1 cursor-pointer"
+              >
+                <Trash2 size={10} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {!isMe && item.isOffline && (
+          <div className="flex items-center space-x-1 mt-1 opacity-40 ml-1">
+             <ArrowDown size={8} className="text-nexus-accent-cyan" />
+             <span className="text-[6px] font-black uppercase tracking-[1px] text-nexus-accent-cyan">DECRYPTING_SHADOW...</span>
+          </div>
+        )}
+
+        {burningCountdown > 0 && (
+          <div className="flex items-center space-x-2 self-end mb-1 mx-2">
+            <div className="flex items-center space-x-1.5 px-2 py-0.5 bg-red-500/20 border border-red-500/40 rounded-[2px] shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+              <Flame size={8} className="text-red-500 animate-pulse" />
+              <span className="text-red-500 font-black text-[7px] uppercase tracking-[1.5px]">DATA_PURGE_IN: {burningCountdown}S</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+});
+
 export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsolated = false, targetName = "SECURE CHANNEL", convId }: { 
   onLightningCall: (mode: 'voice' | 'video') => void, 
   onBack: () => void, 
@@ -348,153 +494,16 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
         )}
 
         <div className="mt-auto flex flex-col space-y-2">
-          {[...historyMessages, ...localMessages].map((item, idx, arr) => {
-            const isMe = item.sender === 'me';
-            const timestamp = "12:41";
-            const showMetadata = idx === 0 || arr[idx-1].sender !== item.sender;
-            const burningCountdown = burningProcessIds[item.id];
-            
-            if (item.type === 'system') {
-              return (
-                <div key={item.id} className="flex w-full justify-center my-4">
-                  <div className="flex flex-col items-center bg-black/5 dark:bg-white/5 rounded-lg px-4 py-2.5 backdrop-blur-sm max-w-[85%] text-center">
-                     <span className="text-[#8E8E93] font-medium text-[10px] tracking-wider uppercase mb-1">SYSTEM_EVENT_{item.mlsEpoch || 'LOG'}</span>
-                     <span className="text-black dark:text-white text-[11px] leading-snug">{item.text}</span>
-                  </div>
-                </div>
-              );
-            }
-
-            return (
-              <motion.div 
-                key={item.id} 
-                initial={{ opacity: 0, scale: 0.92, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25, mass: 0.8 }}
-                className={`flex flex-col group relative ${showMetadata ? 'mt-3' : 'mt-0.5'} ${isMe ? 'items-end' : 'items-start'}`}
-              >
-                {showMetadata && (
-                   <span className={`text-[11px] font-medium text-[#8E8E93] mb-1 ${isMe ? 'mr-1' : 'ml-1'}`}>
-                      {isMe ? 'Me' : (item.sender || 'Peer Node')}
-                   </span>
-                )}
-                
-                <div className={`flex items-start group relative ${isMe ? 'flex-row-reverse' : ''}`}>
-                  <div className={`max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                    {item.type === 'image' || item.type === 'media' ? (
-                      <motion.div 
-                        whileTap={{ scale: 0.98 }}
-                        className="rounded-[16px] overflow-hidden border border-black/5 dark:border-white/5 shadow-sm p-1 bg-white dark:bg-[#1C1C1E] backdrop-blur-md relative"
-                      >
-                         {item.type === 'media' || !item.text ? (
-                            <div className="w-64 h-40 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[12px] flex flex-col items-center justify-center space-y-3 cursor-pointer group transition-colors">
-                               <div className="w-12 h-12 rounded-full border border-[#C7C7CC] dark:border-[#5A5A5E] flex items-center justify-center group-active:scale-95 transition-transform">
-                                  <Image size={24} className="text-[#8E8E93]" />
-                               </div>
-                               <div className="text-center">
-                                  <span className="text-[13px] font-medium text-black dark:text-white block mb-1">Encrypted Media</span>
-                                  <span className="text-[11px] text-[#8E8E93]">Size: {item.size || '3.2MB'} • Tap to Decrypt</span>
-                               </div>
-                            </div>
-                         ) : (
-                            <MosaicPressable src={item.text} />
-                         )}
-                      </motion.div>
-                    ) : (
-                      <motion.div 
-                        whileTap={{ scale: 0.99 }}
-                        className={`px-4 py-2.5 rounded-[18px] shadow-sm transition-all text-[15px] leading-relaxed relative overflow-hidden ${
-                        isMe 
-                        ? (item.isOffline 
-                            ? 'bg-[#FF9500] text-white shadow-[0_0_15px_rgba(255,149,0,0.15)]' 
-                            : 'bg-[#007AFF] text-white font-normal') + ' rounded-tr-sm' 
-                        : 'bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/5 text-black dark:text-white rounded-tl-sm'
-                      }`}>
-                        {item.isOffline && (
-                          <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(rgba(212,175,55,0.1)_1px,transparent_1px)] bg-[size:100%_3px]" />
-                        )}
-                        {burningCountdown > 0 && (
-                          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none overflow-hidden">
-                            <motion.div 
-                              initial={{ opacity: 0, scale: 2 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.5 }}
-                              key={burningCountdown}
-                              className="text-white font-black text-2xl drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] z-20"
-                            >
-                               {burningCountdown}
-                            </motion.div>
-                            <motion.div 
-                              initial={{ width: '0%' }}
-                              animate={{ width: `${(1 - burningCountdown / 5) * 100}%` }}
-                              className="absolute inset-0 bg-red-600/40 mix-blend-overlay z-10"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-red-600/20 to-transparent z-0 animate-pulse" />
-                          </div>
-                        )}
-                        {item.text}
-                        {item.isOffline && (
-                          <div className="mt-1 pt-1 border-t border-nexus-accent-gold/10 flex flex-col space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[6px] font-black uppercase tracking-[2px] text-nexus-accent-gold">STORED IN RELAY SWARM</span>
-                              <div className="flex items-center space-x-1 px-1 py-0.5 bg-nexus-accent-gold/20 border border-nexus-accent-gold/30 rounded-[2px]">
-                                <Clock size={6} className="text-nexus-accent-gold" />
-                                <span className="text-[5px] font-black text-nexus-accent-gold uppercase tracking-[1px]">AUTO-WIPE: {item.ttl || '72H'}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                               {item.nodes?.map((n: string, i: number) => (
-                                 <div key={i} className="px-1 py-0.5 bg-nexus-accent-gold/5 border border-nexus-accent-gold/10 rounded-[1px]">
-                                    <span className="text-[4px] font-bold text-nexus-accent-gold/40">{n}</span>
-                                 </div>
-                               ))}
-                            </div>
-                          </div>
-                        )}
-                      </motion.div>
-                    )}
-                  </div>
-                  
-                  {!burningCountdown && (
-                    <div className={`flex items-center space-x-2 self-end mb-1 mx-2 transition-opacity duration-300 opacity-20 group-hover:opacity-60 ${isMe ? '' : 'flex-row-reverse'}`}>
-                      {item.isOffline ? (
-                        <Orbit size={8} className="text-nexus-accent-gold animate-spin-slow" />
-                      ) : (
-                        <Clock size={8} className="text-nexus-ink-muted" />
-                      )}
-                      <span className="text-[7px] font-bold text-nexus-ink-muted uppercase tracking-tighter">
-                         {typeof item.timestamp === 'number' ? new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}) : (item.timestamp || timestamp)}
-                      </span>
-                      {isMe && (
-                        <button 
-                          onClick={() => setBurningMessageId(item.id)}
-                          className="text-red-500 opacity-0 group-hover:opacity-40 hover:opacity-100 transition-all bg-transparent border-none p-1 cursor-pointer"
-                        >
-                          <Trash2 size={10} />
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {!isMe && item.isOffline && (
-                    <div className="flex items-center space-x-1 mt-1 opacity-40 ml-1">
-                       <ArrowDown size={8} className="text-nexus-accent-cyan" />
-                       <span className="text-[6px] font-black uppercase tracking-[1px] text-nexus-accent-cyan">DECRYPTING_SHADOW...</span>
-                    </div>
-                  )}
-
-                  {burningCountdown > 0 && (
-                    <div className="flex items-center space-x-2 self-end mb-1 mx-2">
-                      <div className="flex items-center space-x-1.5 px-2 py-0.5 bg-red-500/20 border border-red-500/40 rounded-[2px] shadow-[0_0_10px_rgba(239,68,68,0.2)]">
-                        <Flame size={8} className="text-red-500 animate-pulse" />
-                        <span className="text-red-500 font-black text-[7px] uppercase tracking-[1.5px]">DATA_PURGE_IN: {burningCountdown}S</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
+          {[...historyMessages, ...localMessages].map((item, idx, arr) => (
+            <MemoizedMessageBubble 
+              key={item.id} 
+              item={item} 
+              idx={idx} 
+              arr={arr} 
+              burningCountdown={burningProcessIds[item.id]} 
+              setBurningMessageId={setBurningMessageId} 
+            />
+          ))}
         </div>
         <div ref={messagesEndRef} className="h-4 shrink-0" />
       </div>

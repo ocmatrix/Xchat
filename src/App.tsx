@@ -164,7 +164,7 @@ export default function App() {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
-        const deterministicDid = `nexus:node:${user.uid.slice(0, 8)}`;
+        const deterministicDid = `did:nexus:node:${user.uid.slice(0, 16)}`;
         setMyDid(deterministicDid);
         setIsInitialized(true);
       } else {
@@ -270,7 +270,7 @@ export default function App() {
                   <LogoIcon />
               </div>
               <h1 className="text-[14px] font-black text-black dark:text-white uppercase tracking-tight font-sans leading-none">
-                DOTCOM
+                REALEX
               </h1>
               <div className="flex items-center space-x-2 font-mono leading-none">
                   <div className="w-1.5 h-1.5 bg-[#00FF41] rounded-full shadow-[0_0_8px_rgba(0,255,65,0.6)] shrink-0"></div>
@@ -369,7 +369,7 @@ export default function App() {
         </AnimatePresence>
 
         {/* Screen Content - Reclaimed Space */}
-        <div className={`flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col transition-colors duration-500 pt-0`}>
+        <div className={`flex-1 overflow-hidden relative flex flex-col transition-colors duration-500 pt-0`}>
           <ErrorBoundary>
             <AnimatePresence mode="wait">
                 {!isConversationOpen ? (
@@ -378,7 +378,7 @@ export default function App() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className={`w-full flex-col flex shrink-0 min-h-max ${!isConversationOpen ? (currentView === 'CHAT' ? (isSearchExpanded ? 'pt-[108px]' : 'pt-[72px]') : 'pt-[36px]') : 'pt-0'}`}
+                    className={`w-full flex-col flex flex-1 min-h-0 ${!isConversationOpen ? (currentView === 'CHAT' ? (isSearchExpanded ? 'pt-[108px]' : 'pt-[72px]') : 'pt-[36px]') : 'pt-0'}`}
                   >
                     {currentView === 'CHAT' && (
                       <ChatList 
