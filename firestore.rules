@@ -49,7 +49,7 @@ service cloud.firestore {
         && data.protocol is string && data.protocol.size() <= 50
         && data.nonce is string && data.nonce.size() <= 128
         && data.timestamp == request.time
-        && data.type in ['text', 'image', 'file', 'call', 'signal'];
+        && data.type in ['text', 'image', 'file', 'call', 'signal', 'media', 'system'];
     }
 
     // --- Match Groups ---

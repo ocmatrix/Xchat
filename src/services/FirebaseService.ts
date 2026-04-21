@@ -53,10 +53,11 @@ export const FirebaseService = {
     if (!auth.currentUser) return;
     const userRef = doc(db, 'users', auth.currentUser.uid);
     try {
+      const avatarApi = import.meta.env.VITE_AVATAR_API || 'https://api.dicebear.com/7.x/pixel-art/svg';
       await setDoc(userRef, {
         did,
         name,
-        avatar: avatar || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${did}`,
+        avatar: avatar || `${avatarApi}?seed=${did}`,
         status: 'online',
         lastSeen: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -116,12 +117,18 @@ export const FirebaseService = {
       limit(100)
     );
     
-    return onSnapshot(q, (snapshot) => {
-      const messages = snapshot.docs.map(d => ({
-        id: d.id,
-        ...d.data(),
-        timestamp: (d.data().timestamp as Timestamp)?.toDate() || new Error('Pending TS')
-      }));
+    return onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+      const messages = snapshot.docs.map(d => {
+        const data = d.data();
+        // Optimistic rendering resilience: when serverTimestamp hasn't round-tripped yet
+        const timestamp = data.timestamp ? (data.timestamp as Timestamp).toDate().getTime() : Date.now();
+        return {
+          id: d.id,
+          ...data,
+          timestamp,
+          isPending: snapshot.metadata.hasPendingWrites
+        };
+      });
       callback(messages);
     }, (e) => handleFirestoreError(e, 'list', `conversations/${convId}/messages`));
   },

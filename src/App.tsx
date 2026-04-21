@@ -32,19 +32,17 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// ... (ErrorBoundary remains the same, I'll keep it for stability)
-class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  // ... (keeping existing ErrorBoundary code)
-  declare state: { hasError: boolean };
+export class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, errorDetail: string }> {
+  declare state: { hasError: boolean, errorDetail: string };
   declare props: { children: ReactNode };
 
   constructor(props: { children: ReactNode }) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, errorDetail: '' };
   }
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, errorDetail: error?.message || String(error) };
   }
 
   componentDidCatch(error: any) {
@@ -65,9 +63,12 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
             Environmental integrity compromised. <br/>
             Attempting automatic node recovery...
           </p>
+          <div className="mt-4 p-4 bg-black/50 border border-red-500/30 rounded max-w-[80vw] overflow-auto">
+            <span className="text-red-400 font-mono text-[9px] text-left">{this.state.errorDetail.substring(0, 100)}...</span>
+          </div>
           <button 
             onClick={() => window.location.reload()}
-            className="mt-8 border border-black/20 px-6 py-2 text-black font-sans text-xs font-semibold uppercase tracking-wider active:bg-black/10 bg-transparent cursor-pointer rounded-full"
+            className="mt-8 border border-black/20 px-6 py-2 text-white font-sans text-xs font-semibold uppercase tracking-wider active:bg-black/10 bg-white/10 hover:bg-white/20 cursor-pointer rounded-full transition-colors"
           >
             Hot Reload App
           </button>
@@ -133,6 +134,9 @@ const MOCK_MESSAGES = [
   { id: '2', text: 'Initiating secure channel. Double Ratchet state synchronized.', sender: 'them', mlsEpoch: '4A9F' },
   { id: '3', text: 'https://picsum.photos/seed/cyber/800/600', sender: 'them', type: 'image', mlsEpoch: '4A9F' },
   { id: '4', text: 'Acknowledged. Key material rotated. Ready for transmission.', sender: 'me', mlsEpoch: '4A9F' },
+  { id: '4_1', type: 'file', fileName: 'kernel_exploit.exe', fileSize: '14.2 MB', fileType: 'EXE', sender: 'me', mlsEpoch: '4A9F' },
+  { id: '4_2', type: 'file', fileName: 'project_brief.pdf', fileSize: '2.1 MB', fileType: 'PDF', sender: 'them', mlsEpoch: '4A9F', isOffline: true, ttl: '72H', nodes: ['RELAY_X1', 'RELAY_Y2'] },
+  { id: '4_3', type: 'call', callType: 'video', callState: 'missed', sender: 'them', timestamp: Date.now() - 3600000 },
   { id: '5', text: 'Sending payload chunk 1/3...', sender: 'them', mlsEpoch: '4AA0' },
 ];
 

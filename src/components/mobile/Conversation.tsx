@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { 
   Zap, Phone, Video, Info, ShieldCheck, Lock, 
   ChevronLeft, ArrowRight, Trash2, AlertTriangle, 
@@ -9,7 +9,10 @@ import {
 import { GroupPanel } from './GroupPanel';
 import { PrivateChatSettings } from './PrivateChatSettings';
 import { motion, AnimatePresence } from 'motion/react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { auth } from '../../lib/firebase';
 import { FirebaseService } from '../../services/FirebaseService';
+import { WebRTCService } from '../../services/WebRTCService';
 import { NexusCompressionService } from '../../services/NexusCompressionService';
 import { NexusSecurityService } from '../../services/NexusSecurityService';
 import { ShadowDropService } from '../../services/ShadowDropService';
@@ -61,7 +64,7 @@ const MosaicPressable = ({ src }: { src: string }) => {
 
 const MemoizedMessageBubble = React.memo(({ item, idx, arr, burningCountdown, setBurningMessageId }: any) => {
   const isMe = item.sender === 'me';
-  const timestamp = "12:41";
+  const timestamp = typeof item.timestamp === 'number' ? new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}) : (item.timestamp || "12:41");
   const showMetadata = idx === 0 || arr[idx-1].sender !== item.sender;
 
   if (item.type === 'system') {
@@ -74,6 +77,137 @@ const MemoizedMessageBubble = React.memo(({ item, idx, arr, burningCountdown, se
       </div>
     );
   }
+
+  const baseBubbleStyles = `px-4 py-2.5 rounded-[18px] shadow-sm transition-all text-[15px] leading-relaxed relative overflow-hidden ${
+    isMe 
+    ? (item.isOffline 
+        ? 'bg-[#FF9500] text-white shadow-[0_0_15px_rgba(255,149,0,0.15)]' 
+        : 'bg-[#007AFF] text-white font-normal') + ' rounded-tr-sm' 
+    : 'bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/5 text-black dark:text-white rounded-tl-sm'
+  }`;
+
+  const renderDecorations = () => (
+    <>
+      {item.isOffline && (
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(rgba(212,175,55,0.1)_1px,transparent_1px)] bg-[size:100%_3px]" />
+      )}
+      {burningCountdown > 0 && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none overflow-hidden">
+          <motion.div 
+            initial={{ opacity: 0, scale: 2 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            key={burningCountdown}
+            className="text-white font-black text-2xl drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] z-20"
+          >
+             {burningCountdown}
+          </motion.div>
+          <motion.div 
+            initial={{ width: '0%' }}
+            animate={{ width: `${(1 - burningCountdown / 5) * 100}%` }}
+            className="absolute inset-0 bg-red-600/40 mix-blend-overlay z-10"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-red-600/20 to-transparent z-0 animate-pulse" />
+        </div>
+      )}
+      {item.isOffline && (
+        <div className={`mt-2 pt-1.5 flex flex-col space-y-1.5 ${isMe ? 'border-t border-white/20' : 'border-t border-black/5 dark:border-white/10'}`}>
+          <div className="flex items-center justify-between">
+            <span className={`text-[6px] font-black uppercase tracking-[2px] ${isMe ? 'text-white/50' : 'text-nexus-accent-gold'}`}>STORED IN RELAY SWARM</span>
+            <div className={`flex items-center space-x-1 px-1 py-0.5 border rounded-[2px] ${isMe ? 'bg-white/10 border-white/20' : 'bg-nexus-accent-gold/20 border-nexus-accent-gold/30'}`}>
+              <Clock size={6} className={isMe ? 'text-white/70' : 'text-nexus-accent-gold'} />
+              <span className={`text-[5px] font-black uppercase tracking-[1px] ${isMe ? 'text-white/90' : 'text-nexus-accent-gold'}`}>AUTO-WIPE: {item.ttl || '72H'}</span>
+            </div>
+          </div>
+          {item.nodes && item.nodes.length > 0 && (
+            <div className="flex items-center space-x-1 flex-wrap gap-y-1">
+               {item.nodes.map((n: string, i: number) => (
+                 <div key={i} className={`px-1 py-0.5 border rounded-[1px] ${isMe ? 'bg-white/5 border-white/10' : 'bg-nexus-accent-gold/5 border-nexus-accent-gold/10'}`}>
+                    <span className={`text-[4px] font-bold ${isMe ? 'text-white/40' : 'text-nexus-accent-gold/40'}`}>{n}</span>
+                 </div>
+               ))}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+
+  const renderContent = () => {
+    switch (item.type) {
+      case 'image':
+      case 'media':
+        return (
+          <motion.div 
+            whileTap={{ scale: 0.98 }}
+            className="rounded-[16px] overflow-hidden border border-black/5 dark:border-white/5 shadow-sm p-1 bg-white dark:bg-[#1C1C1E] backdrop-blur-md relative"
+          >
+             {item.type === 'media' || !item.text ? (
+                <div className="w-64 h-40 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[12px] flex flex-col items-center justify-center space-y-3 cursor-pointer group transition-colors">
+                   <div className="w-12 h-12 rounded-full border border-[#C7C7CC] dark:border-[#5A5A5E] flex items-center justify-center group-active:scale-95 transition-transform">
+                      <Image size={24} className="text-[#8E8E93]" />
+                   </div>
+                   <div className="text-center">
+                      <span className="text-[13px] font-medium text-black dark:text-white block mb-1">Encrypted Media</span>
+                      <span className="text-[11px] text-[#8E8E93]">Size: {item.size || '3.2MB'} • Tap to Decrypt</span>
+                   </div>
+                </div>
+             ) : (
+                <MosaicPressable src={item.text} />
+             )}
+          </motion.div>
+        );
+
+      case 'file':
+        return (
+          <motion.div whileTap={{ scale: 0.99 }} className={`${baseBubbleStyles} !px-3`}>
+            <div className={`flex items-center space-x-3 ${isMe ? 'text-white' : 'text-black dark:text-white'}`}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isMe ? 'bg-white/20' : 'bg-[#F2F2F7] dark:bg-[#2C2C2E]'}`}>
+                <FileText size={20} className={isMe ? 'text-white' : 'text-[#007AFF]'} />
+              </div>
+              <div className="flex flex-col min-w-[120px] pr-2">
+                <span className="font-semibold text-[14px] truncate leading-tight mb-0.5 max-w-[180px]">{item.fileName || 'Archive.zip'}</span>
+                <span className={`text-[11px] font-medium ${isMe ? 'text-white/70' : 'text-[#8E8E93]'}`}>{item.fileSize || 'Unknown Size'} • {item.fileType || 'BIN'}</span>
+              </div>
+            </div>
+            {renderDecorations()}
+          </motion.div>
+        );
+
+      case 'call':
+        const isMissed = item.callState === 'missed';
+        return (
+          <motion.div whileTap={{ scale: 0.99 }} className={`${baseBubbleStyles} !px-3`}>
+            <div className={`flex items-center space-x-3 ${isMe ? 'text-white' : 'text-black dark:text-white'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isMissed ? (isMe ? 'bg-white/20' : 'bg-red-500/10') : (isMe ? 'bg-white/20' : 'bg-[#F2F2F7] dark:bg-[#2C2C2E]')}`}>
+                {item.callType === 'video' ? (
+                  <Video size={18} className={isMissed ? (isMe ? 'text-white' : 'text-red-500') : (isMe ? 'text-white' : 'text-[#007AFF]')} />
+                ) : (
+                  <Phone size={18} className={isMissed ? (isMe ? 'text-white' : 'text-red-500') : (isMe ? 'text-white' : 'text-[#007AFF]')} />
+                )}
+              </div>
+              <div className="flex flex-col pr-2">
+                <span className={`font-semibold text-[15px] leading-tight mb-0.5 ${isMissed && !isMe ? 'text-red-500' : ''}`}>
+                  {isMissed ? 'Missed Call' : `${item.callType === 'video' ? 'Video' : 'Audio'} Call`}
+                </span>
+                <span className={`text-[12px] font-medium ${isMe ? 'text-white/70' : 'text-[#8E8E93]'}`}>
+                  {isMissed ? timestamp : (item.callDuration || 'Ended')}
+                </span>
+              </div>
+            </div>
+            {renderDecorations()}
+          </motion.div>
+        );
+
+      default:
+        return (
+          <motion.div whileTap={{ scale: 0.99 }} className={baseBubbleStyles}>
+            {item.text}
+            {renderDecorations()}
+          </motion.div>
+        );
+    }
+  };
 
   return (
     <motion.div 
@@ -88,116 +222,46 @@ const MemoizedMessageBubble = React.memo(({ item, idx, arr, burningCountdown, se
          </span>
       )}
       
-      <div className={`flex items-start group relative ${isMe ? 'flex-row-reverse' : ''}`}>
-        <div className={`max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-          {item.type === 'image' || item.type === 'media' ? (
-            <motion.div 
-              whileTap={{ scale: 0.98 }}
-              className="rounded-[16px] overflow-hidden border border-black/5 dark:border-white/5 shadow-sm p-1 bg-white dark:bg-[#1C1C1E] backdrop-blur-md relative"
-            >
-               {item.type === 'media' || !item.text ? (
-                  <div className="w-64 h-40 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[12px] flex flex-col items-center justify-center space-y-3 cursor-pointer group transition-colors">
-                     <div className="w-12 h-12 rounded-full border border-[#C7C7CC] dark:border-[#5A5A5E] flex items-center justify-center group-active:scale-95 transition-transform">
-                        <Image size={24} className="text-[#8E8E93]" />
-                     </div>
-                     <div className="text-center">
-                        <span className="text-[13px] font-medium text-black dark:text-white block mb-1">Encrypted Media</span>
-                        <span className="text-[11px] text-[#8E8E93]">Size: {item.size || '3.2MB'} • Tap to Decrypt</span>
-                     </div>
-                  </div>
-               ) : (
-                  <MosaicPressable src={item.text} />
-               )}
-            </motion.div>
-          ) : (
-            <motion.div 
-              whileTap={{ scale: 0.99 }}
-              className={`px-4 py-2.5 rounded-[18px] shadow-sm transition-all text-[15px] leading-relaxed relative overflow-hidden ${
-              isMe 
-              ? (item.isOffline 
-                  ? 'bg-[#FF9500] text-white shadow-[0_0_15px_rgba(255,149,0,0.15)]' 
-                  : 'bg-[#007AFF] text-white font-normal') + ' rounded-tr-sm' 
-              : 'bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/5 text-black dark:text-white rounded-tl-sm'
-            }`}>
-              {item.isOffline && (
-                <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(rgba(212,175,55,0.1)_1px,transparent_1px)] bg-[size:100%_3px]" />
-              )}
-              {burningCountdown > 0 && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none overflow-hidden">
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 2 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.5 }}
-                    key={burningCountdown}
-                    className="text-white font-black text-2xl drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] z-20"
-                  >
-                     {burningCountdown}
-                  </motion.div>
-                  <motion.div 
-                    initial={{ width: '0%' }}
-                    animate={{ width: `${(1 - burningCountdown / 5) * 100}%` }}
-                    className="absolute inset-0 bg-red-600/40 mix-blend-overlay z-10"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-red-600/20 to-transparent z-0 animate-pulse" />
-                </div>
-              )}
-              {item.text}
-              {item.isOffline && (
-                <div className="mt-1 pt-1 border-t border-nexus-accent-gold/10 flex flex-col space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[6px] font-black uppercase tracking-[2px] text-nexus-accent-gold">STORED IN RELAY SWARM</span>
-                    <div className="flex items-center space-x-1 px-1 py-0.5 bg-nexus-accent-gold/20 border border-nexus-accent-gold/30 rounded-[2px]">
-                      <Clock size={6} className="text-nexus-accent-gold" />
-                      <span className="text-[5px] font-black text-nexus-accent-gold uppercase tracking-[1px]">AUTO-WIPE: {item.ttl || '72H'}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                     {item.nodes?.map((n: string, i: number) => (
-                       <div key={i} className="px-1 py-0.5 bg-nexus-accent-gold/5 border border-nexus-accent-gold/10 rounded-[1px]">
-                          <span className="text-[4px] font-bold text-nexus-accent-gold/40">{n}</span>
-                       </div>
-                     ))}
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          )}
+      <div className={`flex items-end group relative ${isMe ? 'flex-row-reverse' : ''}`}>
+        <div className={`max-w-[85%] sm:max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'} z-10`}>
+          {renderContent()}
         </div>
         
         {!burningCountdown && (
-          <div className={`flex items-center space-x-2 self-end mb-1 mx-2 transition-opacity duration-300 opacity-20 group-hover:opacity-60 ${isMe ? '' : 'flex-row-reverse'}`}>
+          <div className={`flex items-center space-x-2 pb-1 mx-2 transition-opacity duration-300 opacity-0 group-hover:opacity-100 ${isMe ? '' : 'flex-row-reverse'} shrink-0 z-0`}>
             {item.isOffline ? (
-              <Orbit size={8} className="text-nexus-accent-gold animate-spin-slow" />
+              <Orbit size={10} className="text-nexus-accent-gold animate-spin-slow" />
             ) : (
-              <Clock size={8} className="text-nexus-ink-muted" />
+              <Clock size={10} className="text-[#8E8E93]" />
             )}
-            <span className="text-[7px] font-bold text-nexus-ink-muted uppercase tracking-tighter">
-               {typeof item.timestamp === 'number' ? new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}) : (item.timestamp || timestamp)}
+            <span className="text-[10px] font-medium text-[#8E8E93] tracking-tight">
+               {timestamp}
             </span>
             {isMe && (
               <button 
                 onClick={() => setBurningMessageId(item.id)}
-                className="text-red-500 opacity-0 group-hover:opacity-40 hover:opacity-100 transition-all bg-transparent border-none p-1 cursor-pointer"
+                className="text-red-500 hover:bg-red-500/10 p-1.5 rounded-full transition-all cursor-pointer"
+                title="Burn Message"
               >
-                <Trash2 size={10} />
+                <Trash2 size={12} />
               </button>
             )}
           </div>
         )}
 
-        {!isMe && item.isOffline && (
-          <div className="flex items-center space-x-1 mt-1 opacity-40 ml-1">
-             <ArrowDown size={8} className="text-nexus-accent-cyan" />
-             <span className="text-[6px] font-black uppercase tracking-[1px] text-nexus-accent-cyan">DECRYPTING_SHADOW...</span>
+        {burningCountdown > 0 && (
+          <div className="flex items-center space-x-2 pb-1 mx-2 shrink-0">
+            <div className="flex items-center space-x-1.5 px-2 py-0.5 bg-red-500/20 border border-red-500/40 rounded-[4px] shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+              <Flame size={10} className="text-red-500 animate-pulse" />
+              <span className="text-red-500 font-bold text-[9px] uppercase tracking-[1px]">{burningCountdown}S</span>
+            </div>
           </div>
         )}
-
-        {burningCountdown > 0 && (
-          <div className="flex items-center space-x-2 self-end mb-1 mx-2">
-            <div className="flex items-center space-x-1.5 px-2 py-0.5 bg-red-500/20 border border-red-500/40 rounded-[2px] shadow-[0_0_10px_rgba(239,68,68,0.2)]">
-              <Flame size={8} className="text-red-500 animate-pulse" />
-              <span className="text-red-500 font-black text-[7px] uppercase tracking-[1.5px]">DATA_PURGE_IN: {burningCountdown}S</span>
-            </div>
+        
+        {!isMe && item.isOffline && !burningCountdown && (
+          <div className="absolute -bottom-4 left-0 flex items-center space-x-1 opacity-60">
+             <ArrowDown size={10} className="text-nexus-accent-cyan" />
+             <span className="text-[8px] font-bold uppercase tracking-[1px] text-nexus-accent-cyan">DECRYPTING_SHADOW...</span>
           </div>
         )}
       </div>
@@ -226,18 +290,121 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [localMessages, setLocalMessages] = useState<any[]>([]);
 
+  // WebRTC State
+  const [videoCallState, setVideoCallState] = useState<'idle' | 'calling' | 'receiving' | 'connected'>('idle');
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const webrtcService = useMemo(() => convId ? new WebRTCService(convId) : null, [convId]);
+  const processedSignals = useRef<Set<string>>(new Set());
+
+  // WebRTC Handlers
+  const handleStartCall = async (mode: 'voice' | 'video') => {
+    if (!webrtcService) return;
+    setVideoCallState('calling');
+    try {
+      const stream = await webrtcService.startLocalStream(mode === 'video', true);
+      setLocalStream(stream);
+      webrtcService.setCallbacks(
+        (rStream) => setRemoteStream(rStream),
+        (state) => {
+          if (state === 'connected') setVideoCallState('connected');
+          if (state === 'disconnected' || state === 'failed' || state === 'closed') handleEndCall();
+        }
+      );
+      await webrtcService.createOffer();
+    } catch (e) {
+      console.error(e);
+      setVideoCallState('idle');
+    }
+  };
+
+  const handleAcceptCall = async () => {
+    if (!webrtcService) return;
+    try {
+      const stream = await webrtcService.startLocalStream(true, true);
+      setLocalStream(stream);
+      webrtcService.setCallbacks(
+        (rStream) => setRemoteStream(rStream),
+        (state) => {
+          if (state === 'connected') setVideoCallState('connected');
+          if (state === 'disconnected' || state === 'failed' || state === 'closed') handleEndCall();
+        }
+      );
+      await webrtcService.acceptCall();
+      setVideoCallState('connected');
+    } catch (e) {
+      console.error(e);
+      setVideoCallState('idle');
+    }
+  };
+
+  const handleEndCall = () => {
+    if (webrtcService) webrtcService.stopLocalStream();
+    setVideoCallState('idle');
+    setLocalStream(null);
+    setRemoteStream(null);
+  };
+
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream]);
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream]);
+
+  const burnIntervals = useRef<Record<string, NodeJS.Timeout>>({});
+
+  useEffect(() => {
+    return () => {
+      // Hardened Anti-Fragility: Ensure ALL intervals are destroyed on component unmount
+      Object.values(burnIntervals.current).forEach(clearInterval);
+      burnIntervals.current = {};
+    };
+  }, []);
+
   useEffect(() => {
     if (!convId) return;
     const unsub = FirebaseService.subscribeToMessages(convId, (msgs) => {
-      setLocalMessages(msgs.map(m => ({
-        ...m,
-        text: m.content || "Ciphertext Corrupted",
-        sender: m.senderId === 'me' ? 'me' : 'them', // Simulating ownership for now, ideally compare with auth.uid
-        isMe: m.senderId === 'me'
-      })));
+      const displayMsgs: any[] = [];
+      
+      msgs.forEach(m => {
+        const isMyMessage = m.senderId === auth.currentUser?.uid;
+        
+        // Handle signals silently
+        if (m.type === 'signal') {
+          if (!isMyMessage && !processedSignals.current.has(m.id)) {
+            processedSignals.current.add(m.id);
+            if (webrtcService) {
+              const payload = JSON.parse(m.content || '{}');
+              if (payload.type === 'offer' && videoCallState === 'idle') {
+                setVideoCallState('receiving');
+              }
+              webrtcService.handleIncomingSignal(m.content);
+            }
+          }
+          return; // Do not render signals
+        }
+
+        displayMsgs.push({
+          ...m,
+          text: m.content || "Ciphertext Corrupted",
+          sender: isMyMessage ? 'me' : 'them',
+          isMe: isMyMessage
+        });
+      });
+      
+      setLocalMessages(displayMsgs);
     });
     return () => unsub();
-  }, [convId]);
+  }, [convId, webrtcService, videoCallState]);
 
   const startSpeechRecognition = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -291,10 +458,22 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
   const [burningMessageId, setBurningMessageId] = useState<string | null>(null);
   const [burningProcessIds, setBurningProcessIds] = useState<Record<string, number>>({});
   
+  const parentRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const allMessages = useMemo(() => [...historyMessages, ...localMessages], [historyMessages, localMessages]);
+
+  const virtualizer = useVirtualizer({
+    count: allMessages.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 80, // rough estimate of average message height
+    overscan: 10,
+  });
+
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (allMessages.length > 0) {
+      virtualizer.scrollToIndex(allMessages.length - 1, { align: 'end' });
+    }
   };
 
   const triggerHaptic = (style: 'light' | 'medium' | 'heavy' | 'success' | 'error') => {
@@ -359,11 +538,17 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
     const duration = 5; // 5 seconds countdown
     setBurningProcessIds((prev) => ({ ...prev, [messageId]: duration }));
 
+    // If there's an existing interval for this message, clear it (idempotency)
+    if (burnIntervals.current[messageId]) {
+      clearInterval(burnIntervals.current[messageId]);
+    }
+
     const interval = setInterval(() => {
       setBurningProcessIds((prev) => {
         const remaining = (prev[messageId] || 0) - 1;
         if (remaining <= 0) {
           clearInterval(interval);
+          delete burnIntervals.current[messageId];
           const next = { ...prev };
           delete next[messageId];
           console.log(`MESSAGE_BURNED::${messageId}`);
@@ -377,6 +562,8 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
         return { ...prev, [messageId]: remaining };
       });
     }, 1000);
+
+    burnIntervals.current[messageId] = interval;
   };
 
   const currentEpoch = "4AA2";
@@ -439,7 +626,7 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
                </button>
            )}
            <button 
-             onClick={() => onLightningCall('video')}
+             onClick={() => handleStartCall('video')}
              className="w-10 h-10 flex items-center justify-center text-[#007AFF] hover:opacity-70 transition-opacity cursor-pointer bg-transparent border-none"
            >
              <Video size={26} strokeWidth={2} />
@@ -474,7 +661,10 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
       </div>
 
       {/* Message Stream */}
-      <div className={`flex-1 overflow-y-auto px-4 py-4 space-y-3 relative flex flex-col transition-colors ${isOfflineMode ? 'bg-[#E5E5EA] dark:bg-[#2C2C2E]' : 'bg-[#EFEFF4] dark:bg-black'}`}>
+      <div 
+        ref={parentRef}
+        className={`flex-1 overflow-y-auto px-4 py-4 space-y-3 relative flex flex-col transition-colors ${isOfflineMode ? 'bg-[#E5E5EA] dark:bg-[#2C2C2E]' : 'bg-[#EFEFF4] dark:bg-black'}`}
+      >
         {isOfflineMode && (
           <div className="absolute inset-0 pointer-events-none z-10 border-x border-[#FF9500]/10" />
         )}
@@ -493,17 +683,32 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
           </div>
         )}
 
-        <div className="mt-auto flex flex-col space-y-2">
-          {[...historyMessages, ...localMessages].map((item, idx, arr) => (
-            <MemoizedMessageBubble 
-              key={item.id} 
-              item={item} 
-              idx={idx} 
-              arr={arr} 
-              burningCountdown={burningProcessIds[item.id]} 
-              setBurningMessageId={setBurningMessageId} 
-            />
-          ))}
+        <div 
+          className="mt-auto relative w-full"
+          style={{ height: `${virtualizer.getTotalSize()}px` }}
+        >
+          {virtualizer.getVirtualItems().map((virtualItem) => {
+            const item = allMessages[virtualItem.index];
+            return (
+              <div
+                key={virtualItem.key}
+                data-index={virtualItem.index}
+                ref={virtualizer.measureElement}
+                className="absolute top-0 left-0 w-full"
+                style={{
+                  transform: `translateY(${virtualItem.start}px)`,
+                }}
+              >
+                <MemoizedMessageBubble 
+                  item={item} 
+                  idx={virtualItem.index} 
+                  arr={allMessages} 
+                  burningCountdown={burningProcessIds[item.id]} 
+                  setBurningMessageId={setBurningMessageId} 
+                />
+              </div>
+            );
+          })}
         </div>
         <div ref={messagesEndRef} className="h-4 shrink-0" />
       </div>
@@ -716,6 +921,85 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
             }}
             onCancel={() => setBurningMessageId(null)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* WebRTC Video Overlay */}
+      <AnimatePresence>
+        {videoCallState !== 'idle' && (
+          <motion.div 
+            initial={{ opacity: 0, y: '100%' }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="absolute inset-0 z-[2000] bg-black text-white flex flex-col"
+          >
+            <div className="absolute top-12 left-4 right-4 flex justify-between items-center z-10">
+              <span className="font-semibold text-lg drop-shadow-md">{targetName}</span>
+              <span className="text-sm font-mono text-white/70 bg-black/40 px-2 py-1 rounded-md backdrop-blur-sm">
+                {videoCallState === 'calling' && 'Calling...'}
+                {videoCallState === 'receiving' && 'Incoming Call...'}
+                {videoCallState === 'connected' && 'Encrypted P2P'}
+              </span>
+            </div>
+
+            {/* Remote Video (Full Screen) */}
+            <div className="flex-1 relative bg-[#1c1c1e] flex justify-center items-center overflow-hidden">
+               {remoteStream ? (
+                 <video 
+                   ref={remoteVideoRef} 
+                   autoPlay 
+                   playsInline 
+                   className="w-full h-full object-cover" 
+                 />
+               ) : (
+                 <div className="flex flex-col items-center">
+                   <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mb-4 backdrop-blur-sm shadow-[0_0_50px_rgba(255,255,255,0.1)]">
+                     <Video size={40} className="text-white/50" />
+                   </div>
+                   <span className="text-white/50 animate-pulse">
+                     {videoCallState === 'calling' ? 'Establishing P2P Tunnel...' : 'Awaiting Connection...'}
+                   </span>
+                 </div>
+               )}
+
+               {/* Local Video (PiP) */}
+               {localStream && videoCallState === 'connected' && (
+                 <motion.div 
+                   drag
+                   dragConstraints={{ top: 20, left: 20, right: 280, bottom: 400 }}
+                   className="absolute top-16 right-4 w-28 h-40 bg-black rounded-lg overflow-hidden shadow-2xl border border-white/20 z-20 cursor-move"
+                 >
+                   <video 
+                     ref={localVideoRef} 
+                     autoPlay 
+                     playsInline 
+                     muted 
+                     className="w-full h-full object-cover transform scale-x-[-1]" 
+                   />
+                 </motion.div>
+               )}
+            </div>
+
+            {/* Call Controls */}
+            <div className="h-32 bg-gradient-to-t from-black/90 to-transparent flex items-center justify-center gap-6 px-6 pb-6">
+              {videoCallState === 'receiving' && (
+                <button 
+                  onClick={handleAcceptCall}
+                  className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-400 transition-colors shadow-[0_0_20px_rgba(34,197,94,0.4)] border-none"
+                >
+                  <Video size={28} className="text-white" />
+                </button>
+              )}
+              
+              <button 
+                onClick={handleEndCall}
+                className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-400 transition-colors shadow-[0_0_20px_rgba(239,68,68,0.4)] border-none"
+              >
+                <Phone size={28} className="text-white rotate-[135deg]" />
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

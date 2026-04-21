@@ -48,7 +48,7 @@ export const GroupPanel = ({ onClose, members: initialMembers, groupName, isIsol
     }
 
     const id = Math.random().toString(36).substring(2, 11);
-    const baseUrl = window.location.origin;
+    const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
     const expiryMs = {
       "1H": 3600000,
       "24H": 86400000,
