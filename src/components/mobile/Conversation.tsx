@@ -4,7 +4,7 @@ import {
   ChevronLeft, ArrowRight, Trash2, AlertTriangle, 
   RefreshCw, BarChart3, ArrowLeft, Shield, Activity, 
   MoreHorizontal, Command, Terminal, Mic, MicOff,
-  Paperclip, Image, Film, MapPin, FileText, Satellite, Orbit, Box, ArrowDown, Clock, Flame
+  Paperclip, Image, Film, MapPin, FileText, Satellite, Orbit, Box, ArrowDown, Clock, Flame, Plus
 } from 'lucide-react';
 import { GroupPanel } from './GroupPanel';
 import { motion, AnimatePresence } from 'motion/react';
@@ -241,7 +241,7 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
   ];
 
   return (
-    <div className="absolute inset-0 bg-nexus-bg z-[500] flex flex-col overflow-hidden animate-in fade-in duration-500 font-sans">
+    <div className="absolute inset-0 bg-nexus-bg z-[500] flex flex-col overflow-hidden animate-in fade-in duration-300 font-sans">
       {showGroupPanel && (
         <GroupPanel 
           groupName={targetName} 
@@ -251,78 +251,49 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
         />
       )}
 
-      {/* Tactical Header - Ultra-Slim Glassmorphism Consistency (Shifted below global header) */}
-      <div className="absolute top-0 pt-0 left-0 right-0 z-[1000] flex items-center justify-between h-9 px-4 bg-nexus-surface/90 backdrop-blur-md border-b border-nexus-border transition-all">
-        <div className="flex items-center space-x-3 overflow-hidden flex-1">
-          <button 
-            onClick={onBack} 
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-nexus-bg border border-nexus-border text-nexus-ink-muted hover:text-nexus-ink transition-all cursor-pointer active:scale-95 shrink-0"
-          >
-            <ChevronLeft size={12} strokeWidth={3} />
-          </button>
-          
-          <div className="flex items-center space-x-2 min-w-0 flex-1">
-             <h2 className="text-nexus-ink font-sans text-xs font-black tracking-tight uppercase truncate cursor-pointer" onClick={() => isGroup && setShowGroupPanel(true)}>
-               {targetName}
-             </h2>
-             <div className={`w-1.5 h-1.5 shrink-0 rounded-full ${isIsolated ? 'bg-[#FF3B30]' : 'bg-nexus-accent-cyan animate-pulse'}`} />
-             
-             {/* E2EE DYNAMIC COLOR-CODED BADGE */}
-             <div className={`flex items-center space-x-1 px-1.5 py-0.5 border rounded-[2px] shrink-0 ${
-               isIsolated 
-                 ? 'bg-[#FF3B30]/10 border-[#FF3B30]/30 text-[#FF3B30]' 
-                 : 'bg-nexus-accent-gold/10 border-nexus-accent-gold/20 text-nexus-accent-gold'
-             }`}>
-               <ShieldCheck size={7} />
-               <span className="font-black text-[6px] tracking-[0.5px] uppercase">
-                 {isIsolated ? 'HARDENED' : 'SECURE'}
-               </span>
-             </div>
-             
-             <span className="text-nexus-ink-muted opacity-40 font-mono text-[7px] tracking-tighter truncate">
-                EPOCH_{currentEpoch}
-             </span>
-          </div>
+      {/* iOS Navigation Bar */}
+      <div className="absolute top-0 left-0 right-0 z-[1000] flex items-center justify-between h-[44px] sm:mt-[30px] px-2 bg-nexus-surface/90 backdrop-blur-xl border-b border-nexus-border transition-all">
+        {/* Left: Back Button */}
+        <button 
+          onClick={onBack} 
+          className="flex items-center text-nexus-accent-blue active:opacity-70 transition-opacity bg-transparent border-none cursor-pointer"
+        >
+          <ChevronLeft size={28} strokeWidth={2.5} />
+          <span className="text-[17px] -ml-1">Back</span>
+        </button>
+        
+        {/* Center: Title & Avatar */}
+        <div 
+          className="flex flex-col items-center justify-center absolute left-1/2 -translate-x-1/2 cursor-pointer active:opacity-70"
+          onClick={() => isGroup && setShowGroupPanel(true)}
+        >
+           <h2 className="text-nexus-ink font-semibold text-[17px] tracking-tight truncate max-w-[150px]">
+             {targetName}
+           </h2>
+           <span className="text-nexus-ink-muted text-[11px]">
+              {isGroup ? 'Group' : 'Online'}
+           </span>
         </div>
 
-        <div className="flex items-center space-x-0.5">
+        {/* Right: Actions */}
+        <div className="flex items-center space-x-4 pr-2">
            <button 
-             onClick={onLightningCall}
-             className="w-7 h-7 flex items-center justify-center text-nexus-ink-muted hover:text-nexus-ink transition-all cursor-pointer rounded-full active:scale-95"
+             onClick={() => onLightningCall('video')}
+             className="text-nexus-accent-blue active:opacity-70 transition-opacity bg-transparent border-none cursor-pointer"
            >
-             <Video size={12} strokeWidth={2.5} />
+             <Video size={24} strokeWidth={1.5} />
            </button>
            <button 
-             onClick={() => setShowGroupPanel(true)}
-             className="w-7 h-7 flex items-center justify-center text-nexus-ink-muted hover:text-nexus-ink transition-all cursor-pointer rounded-full active:scale-95"
+             onClick={() => onLightningCall('audio')}
+             className="text-nexus-accent-blue active:opacity-70 transition-opacity bg-transparent border-none cursor-pointer"
            >
-             <MoreHorizontal size={12} strokeWidth={2.5} />
+             <Phone size={22} strokeWidth={1.5} />
            </button>
         </div>
-      </div>
-
-      {/* Breadcrumb / Telemetry Strip - Decoupled beneath absolute header */}
-      <div className="mt-9 h-6 flex items-center px-4 border-b border-nexus-border/40 justify-between bg-nexus-bg/50 overflow-hidden shrink-0">
-         <div className="flex items-center min-w-0">
-            <Terminal size={8} className="text-nexus-ink-muted opacity-30 mr-2" />
-            <span className="text-nexus-ink-muted font-mono text-[7px] truncate tracking-tighter opacity-60">
-               {isOfflineMode ? `SHADOW_VAULT` : (isGroup ? `CONSENSUS_ACT` : `TUNNEL::${targetName.toUpperCase()}`)}
-            </span>
-         </div>
-         
-         <div className="flex items-center space-x-2 opacity-30">
-            <div className="flex items-center">
-               <Shield size={7} className="text-nexus-accent-blue mr-1" />
-               <span className="text-nexus-ink font-bold text-[6px] uppercase tracking-[1px]">E2EE</span>
-            </div>
-            <div className="flex items-center border-l border-nexus-border pl-2">
-               <span className="text-nexus-ink font-mono text-[6px] uppercase">98ms</span>
-            </div>
-         </div>
       </div>
 
       {/* Message Stream */}
-      <div className={`flex-1 overflow-y-auto px-4 py-4 space-y-3 scrollbar-hide relative flex flex-col transition-colors ${isOfflineMode ? 'bg-nexus-surface shadow-[inset_0_0_100px_rgba(212,175,55,0.04)]' : 'bg-nexus-bg'}`}>
+      <div className={`flex-1 overflow-y-auto px-4 py-4 pt-[60px] sm:pt-[90px] space-y-3 scrollbar-hide relative flex flex-col transition-colors ${isOfflineMode ? 'bg-nexus-surface' : 'bg-nexus-bg'}`}>
         {isOfflineMode && (
           <div className="absolute inset-0 pointer-events-none z-10 border-x border-nexus-accent-gold/5" />
         )}
@@ -468,48 +439,9 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
         <div ref={messagesEndRef} className="h-4 shrink-0" />
       </div>
       
-      {/* Tactical Input Interface */}
-      <div className={`bg-nexus-surface/80 backdrop-blur-xl border-t border-nexus-border shrink-0 px-4 py-3 pb-8 z-20 transition-all duration-700 relative ${isOfflineMode ? 'shadow-[0_-20px_50px_rgba(212,175,55,0.06)]' : ''}`}>
+      {/* iOS Input Interface */}
+      <div className={`bg-nexus-surface/90 backdrop-blur-xl border-t border-nexus-border shrink-0 px-3 py-2 pb-safe z-20 transition-all duration-300 relative`}>
         
-        {/* Voice Recognition Status Indicator */}
-        <AnimatePresence>
-          {isListening && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 24, opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="flex items-center justify-center space-x-3 bg-nexus-accent-gold/5 border-b border-nexus-accent-gold/10 overflow-hidden"
-            >
-               <div className="flex space-x-0.5 items-center h-2">
-                 {[1, 2, 3, 4, 5].map((i) => (
-                   <motion.div
-                     key={i}
-                     animate={{ height: [4, 12, 4] }}
-                     transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.1 }}
-                     className="w-0.5 bg-nexus-accent-gold rounded-full"
-                   />
-                 ))}
-               </div>
-               <span className="text-nexus-accent-gold font-black text-[7px] tracking-[4px] uppercase animate-pulse">Listening_Secure_Voice_Stream...</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Sharding Status Indicator */}
-        <AnimatePresence>
-          {isSharding && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 24, opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="flex items-center justify-center space-x-3 bg-nexus-accent-gold/10 border-b border-nexus-accent-gold/20 overflow-hidden"
-            >
-               <RefreshCw size={10} className="text-nexus-accent-gold animate-spin" />
-               <span className="text-nexus-accent-gold font-black text-[7px] tracking-[4px] uppercase animate-pulse">ENCRYPTING & SHARDING_PAYLOAD...</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Attachment Menu Popover */}
         <AnimatePresence>
           {showAttachmentMenu && (
@@ -525,137 +457,68 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
                 initial={{ opacity: 0, y: 10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="absolute bottom-full left-4 mb-2 z-20 w-48 bg-nexus-surface border border-nexus-border rounded-xl shadow-2xl p-2 grid grid-cols-2 gap-2 overflow-hidden"
+                className="absolute bottom-full left-4 mb-2 z-20 w-[240px] bg-nexus-surface border border-nexus-border rounded-[14px] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] p-2 grid grid-cols-2 gap-2 overflow-hidden"
               >
-                <button className="flex flex-col items-center justify-center p-3 rounded-lg hover:bg-nexus-bg transition-colors group cursor-pointer border-none">
-                  <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 mb-1 group-hover:scale-110 transition-transform">
-                    <Image size={20} />
+                <button className="flex flex-col items-center justify-center p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors group cursor-pointer border-none">
+                  <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 mb-1 group-hover:scale-105 transition-transform">
+                    <Image size={24} />
                   </div>
-                  <span className="text-[10px] font-bold text-nexus-ink uppercase tracking-wider">Image</span>
+                  <span className="text-[12px] font-medium text-nexus-ink">Photo</span>
                 </button>
-                <button className="flex flex-col items-center justify-center p-3 rounded-lg hover:bg-nexus-bg transition-colors group cursor-pointer border-none">
-                  <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500 mb-1 group-hover:scale-110 transition-transform">
-                    <Film size={20} />
+                <button className="flex flex-col items-center justify-center p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors group cursor-pointer border-none">
+                  <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500 mb-1 group-hover:scale-105 transition-transform">
+                    <Film size={24} />
                   </div>
-                  <span className="text-[10px] font-bold text-nexus-ink uppercase tracking-wider">Video</span>
+                  <span className="text-[12px] font-medium text-nexus-ink">Video</span>
                 </button>
-                <button className="flex flex-col items-center justify-center p-3 rounded-lg hover:bg-nexus-bg transition-colors group cursor-pointer border-none">
-                  <div className="w-10 h-10 rounded-full bg-nexus-accent-gold/10 flex items-center justify-center text-nexus-accent-gold mb-1 group-hover:scale-110 transition-transform">
-                    <FileText size={20} />
+                <button className="flex flex-col items-center justify-center p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors group cursor-pointer border-none">
+                  <div className="w-12 h-12 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-500 mb-1 group-hover:scale-105 transition-transform">
+                    <FileText size={24} />
                   </div>
-                  <span className="text-[10px] font-bold text-nexus-ink uppercase tracking-wider">Doc</span>
+                  <span className="text-[12px] font-medium text-nexus-ink">Document</span>
                 </button>
-                <button className="flex flex-col items-center justify-center p-3 rounded-lg hover:bg-nexus-bg transition-colors group cursor-pointer border-none">
-                  <div className="w-10 h-10 rounded-full bg-nexus-accent-cyan/10 flex items-center justify-center text-nexus-accent-cyan mb-1 group-hover:scale-110 transition-transform">
-                    <MapPin size={20} />
+                <button className="flex flex-col items-center justify-center p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors group cursor-pointer border-none">
+                  <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-500 mb-1 group-hover:scale-105 transition-transform">
+                    <MapPin size={24} />
                   </div>
-                  <span className="text-[10px] font-bold text-nexus-ink uppercase tracking-wider">Place</span>
+                  <span className="text-[12px] font-medium text-nexus-ink">Location</span>
                 </button>
               </motion.div>
             </>
           )}
         </AnimatePresence>
 
-        <div className={`flex items-center space-x-2 border rounded-full px-4 py-1 focus-within:shadow-md transition-all duration-500 relative ${
-          isOfflineMode 
-          ? 'bg-nexus-accent-gold/[0.03] border-nexus-accent-gold/50 shadow-[0_0_20px_rgba(212,175,55,0.1)]' 
-          : 'bg-nexus-bg border-nexus-border focus-within:bg-nexus-surface'
-        }`}>
-           {isOfflineMode && (
-             <div className="absolute -top-3 left-6 flex items-center space-x-2 z-30">
-               <div className="px-1.5 py-0.5 bg-nexus-accent-gold text-black text-[6px] font-black uppercase tracking-[2px] rounded-sm animate-pulse">
-                 PROTOCOL: SHADOW_DROP
-               </div>
-               
-               <div className="relative">
-                 <button 
-                   onClick={() => setShowTTLSelector(!showTTLSelector)}
-                   className="flex items-center space-x-1 px-1.5 py-0.5 bg-nexus-surface border border-nexus-accent-gold/30 text-nexus-accent-gold text-[6px] font-black uppercase tracking-[1px] rounded-sm hover:bg-nexus-accent-gold hover:text-black transition-all cursor-pointer"
-                 >
-                   <Clock size={6} />
-                   <span>TTL: {offlineTTL}</span>
-                 </button>
-                 
-                 <AnimatePresence>
-                   {showTTLSelector && (
-                     <motion.div 
-                       initial={{ opacity: 0, y: 5 }}
-                       animate={{ opacity: 1, y: 0 }}
-                       exit={{ opacity: 0, y: 5 }}
-                       className="absolute bottom-full left-0 mb-1 bg-nexus-surface border border-nexus-accent-gold/40 rounded-sm p-1 shadow-xl flex flex-col space-y-1 min-w-[60px]"
-                     >
-                       {["24H", "48H", "72H", "168H"].map((t) => (
-                         <button 
-                           key={t}
-                           onClick={() => {
-                             setOfflineTTL(t);
-                             setShowTTLSelector(false);
-                           }}
-                           className={`px-2 py-1 text-[6px] font-black uppercase text-left rounded-xs transition-colors border-none cursor-pointer ${
-                             offlineTTL === t 
-                             ? 'bg-nexus-accent-gold text-black' 
-                             : 'text-nexus-accent-gold hover:bg-nexus-accent-gold/10 bg-transparent'
-                           }`}
-                         >
-                           {t} {t === '168H' ? '(1 WEEK)' : ''}
-                         </button>
-                       ))}
-                     </motion.div>
-                   )}
-                 </AnimatePresence>
-               </div>
-             </div>
-           )}
+        <div className="flex items-end space-x-2">
            <button 
              onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-             className={`text-nexus-ink-muted transition-all bg-transparent border-none p-0 flex items-center justify-center cursor-pointer hover:text-nexus-ink ${showAttachmentMenu ? 'rotate-45 text-nexus-accent-blue' : ''}`}
+             className={`text-nexus-ink-muted transition-all bg-transparent border-none p-2 mb-0.5 flex items-center justify-center cursor-pointer hover:text-nexus-ink ${showAttachmentMenu ? 'rotate-45 text-nexus-accent-blue' : ''}`}
            >
-              <Paperclip size={18} strokeWidth={2.5} />
+              <Plus size={24} strokeWidth={2} className="text-nexus-ink-muted" />
            </button>
 
-           <input 
-             type="text"
-             className="flex-1 text-nexus-ink bg-transparent py-2.5 px-1 outline-none placeholder:text-nexus-ink-muted/20 text-[15px]"
-             placeholder={isListening ? "Listening..." : "Message..."}
-             value={inputText}
-             onChange={(e) => setInputText(e.target.value)}
-             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-           />
+           <div className={`flex-1 flex items-center min-h-[36px] max-h-[120px] rounded-[18px] border border-nexus-border bg-nexus-surface relative overflow-hidden`}>
+             <input 
+               type="text"
+               className="flex-1 text-nexus-ink bg-transparent py-2 px-3 outline-none placeholder:text-nexus-ink-muted/50 text-[17px] leading-tight"
+               placeholder={isListening ? "Listening..." : "iMessage"}
+               value={inputText}
+               onChange={(e) => setInputText(e.target.value)}
+               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+             />
+           </div>
            
-           <div className="flex items-center space-x-1">
+           <div className="flex items-center mb-0.5">
              <button 
-               onClick={() => setIsOfflineMode(!isOfflineMode)}
-               className={`w-9 h-9 flex items-center justify-center transition-all duration-300 rounded-full cursor-pointer border-none ${
-                  isOfflineMode 
-                  ? 'text-nexus-accent-gold bg-nexus-accent-gold/10' 
-                  : 'bg-transparent text-nexus-ink-muted opacity-30 hover:opacity-100 hover:bg-nexus-ink/5'
-               }`}
-               title={isOfflineMode ? "OFFLINE_MAIL_ACTIVE" : "SWITCH_TO_OFFLINE_MAIL"}
-             >
-               <Satellite size={16} strokeWidth={2.5} />
-             </button>
-
-             <button
-               onClick={startSpeechRecognition}
-               className={`w-9 h-9 flex items-center justify-center transition-all duration-300 rounded-full cursor-pointer border-none ${
-                  isListening 
-                  ? 'bg-nexus-accent-gold text-black shadow-[0_0_20px_rgba(255,184,0,0.5)]' 
-                  : 'bg-transparent text-nexus-ink-muted opacity-30 hover:opacity-100 hover:bg-nexus-ink/5'
+               onClick={inputText.trim() ? handleSend : startSpeechRecognition}
+               className={`w-8 h-8 flex items-center justify-center rounded-full transition-all cursor-pointer border-none ${
+                 inputText.trim() ? 'bg-nexus-accent-blue text-white' : (isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-transparent text-nexus-ink-muted')
                }`}
              >
-               {isListening ? <MicOff size={18} strokeWidth={2.5} /> : <Mic size={18} strokeWidth={2.5} />}
-             </button>
-
-             <button
-               onClick={handleSend}
-               disabled={!inputText.trim()}
-               className={`w-9 h-9 flex items-center justify-center transition-all duration-300 rounded-full cursor-pointer border-none ${
-                 inputText.trim() 
-                 ? 'bg-nexus-accent-blue text-white shadow-md active:scale-95' 
-                 : 'bg-transparent text-nexus-ink-muted opacity-20'
-               }`}
-             >
-               <ArrowRight size={18} strokeWidth={3} />
+               {inputText.trim() ? (
+                 <ArrowRight size={18} strokeWidth={2.5} />
+               ) : (
+                 <Mic size={22} strokeWidth={1.5} />
+               )}
              </button>
            </div>
         </div>

@@ -148,6 +148,7 @@ export default function App() {
   const [activeContact, setActiveContact] = useState<any>(null);
   const [overlayScreen, setOverlayScreen] = useState<'MediaCall' | 'InitiateGroup' | 'PeerDiscovery' | 'AuditoriumMeeting' | null>(null);
   const [callParticipantsCount, setCallParticipantsCount] = useState(1);
+  const [callMode, setCallMode] = useState<'audio' | 'video'>('video');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
 
   useEffect(() => {
@@ -175,7 +176,8 @@ export default function App() {
     setIsInitialized(true);
   };
 
-  const startMediaCall = () => {
+  const startMediaCall = (mode: 'audio' | 'video' = 'video') => {
+    setCallMode(mode);
     if (activeContact && activeContact.isGroup) {
       setOverlayScreen('AuditoriumMeeting');
     } else {
@@ -192,110 +194,72 @@ export default function App() {
   });
 
   return (
-    <div className={`min-h-screen w-full flex items-center justify-center font-sans transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-[#F4F4F5] bg-[radial-gradient(#D4D4D8_1px,transparent_1px)] [background-size:12px_12px]'}`}>
-      {/* Container - Command Center Architecture */}
-      <div className={`w-full h-[100dvh] sm:w-[393px] sm:h-[852px] ${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-transparent'} flex flex-col relative sm:border sm:border-black/10 dark:sm:border-white/10 sm:rounded-[6px] overflow-hidden transition-colors duration-500 shadow-2xl`}>
+    <div className={`min-h-screen w-full flex items-center justify-center font-sans transition-colors duration-300 ${theme === 'dark' ? 'bg-[#000000]' : 'bg-[#F2F2F7]'}`}>
+      {/* Container - iOS Device Architecture */}
+      <div className={`w-full h-[100dvh] sm:w-[393px] sm:h-[852px] ${theme === 'dark' ? 'bg-[#000000]' : 'bg-[#F2F2F7]'} flex flex-col relative sm:border-[8px] sm:border-black dark:sm:border-white/20 sm:rounded-[44px] overflow-hidden transition-colors duration-300 sm:shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)]`}>
         
-        {/* Row 1: System Telemetry & Status (h-9) - HIDDEN UNTIL INITIALIZED */}
-        {isInitialized && (
-          <div className="absolute top-0 left-0 right-0 z-[5000] w-full bg-white/40 dark:bg-black/40 backdrop-blur-md border-b flex items-center justify-between h-9 px-4 transition-all duration-500" style={{ borderColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
-            
-            {/* Left: Brand + Active Dot + Telemetry */}
-            <div className="flex items-center space-x-3">
-              <h1 className="text-[14px] font-black text-black dark:text-white uppercase tracking-tight font-sans leading-none">
-                DOTCOM
+        {/* Dynamic Island / Notch Space (Mock) */}
+        <div className="hidden sm:block absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-[30px] bg-black rounded-b-[20px] z-[9999]"></div>
+
+        {/* iOS Navigation Bar */}
+        {isInitialized && !isConversationOpen && (
+          <div className="absolute top-0 left-0 right-0 z-[5000] w-full bg-nexus-surface/90 backdrop-blur-xl border-b border-nexus-border flex flex-col transition-all duration-300">
+            <div className="h-[44px] sm:mt-[30px] flex items-center justify-between px-4 relative">
+              {/* Left Action */}
+              <button className="text-nexus-accent-blue font-medium text-[17px] active:opacity-70 transition-opacity">
+                Edit
+              </button>
+              
+              {/* Title */}
+              <h1 className="text-[17px] font-semibold text-nexus-ink absolute left-1/2 -translate-x-1/2">
+                {currentView === 'CHAT' ? 'Chats' : currentView === 'NODES' ? 'Radar' : 'Settings'}
               </h1>
-              <div className="flex items-center space-x-2 font-mono leading-none">
-                  <div className="w-1.5 h-1.5 bg-[#00FF41] rounded-full shadow-[0_0_8px_rgba(0,255,65,0.6)] shrink-0"></div>
-                  <span className="text-[#6B7280] dark:text-[#9CA3AF] text-[10px] font-bold tracking-tighter">L: 14MS S: 0x4B2</span>
+              
+              {/* Right Actions */}
+              <div className="flex items-center space-x-4">
+                <button 
+                  onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+                  className="text-nexus-accent-blue active:opacity-70 transition-opacity flex items-center"
+                >
+                  {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                </button>
+                {currentView === 'CHAT' && (
+                  <button className="text-nexus-accent-blue active:opacity-70 transition-opacity flex items-center">
+                    <Plus size={24} />
+                  </button>
+                )}
               </div>
             </div>
-            
-            {/* Right: System Utilities */}
-            <div className="flex items-center space-x-2">
-              <button 
-                onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-                className="flex items-center justify-center text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-all cursor-pointer active:scale-90"
-              >
-                <Moon size={12} strokeWidth={2.5} />
-              </button>
-              <button 
-                className="flex items-center justify-center text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-all cursor-pointer active:scale-90"
-              >
-                <Activity size={12} strokeWidth={2.5} />
-              </button>
-            </div>
-          </div>
-        )}
 
-        {/* Row 2: Command Toolbar (h-9) - HIDDEN UNTIL INITIALIZED */}
-        {isInitialized && !isConversationOpen && (
-          <div className="absolute top-9 left-0 right-0 z-[4000] h-9 bg-white/40 dark:bg-black/40 backdrop-blur-md border-b flex items-center justify-between px-4 transition-all duration-500" style={{ borderColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
-            {/* Left: Navigation Segments */}
-            <div className="flex items-center space-x-1">
-                {(['LATEST', 'ONLINE', 'A-Z'] as MainTab[]).map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-2 h-6 flex items-center justify-center text-[9px] font-sans font-bold uppercase tracking-wider transition-colors border ${activeTab === tab ? 'border-black/20 dark:border-white/20 bg-black/5 dark:bg-white/10 text-black dark:text-white rounded-[2px]' : 'border-transparent text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white cursor-pointer'}`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-            </div>
-
-            {/* Right: Interactive Utilities - ONLY ON CHAT TAB */}
+            {/* iOS Search Bar (Only on CHAT) */}
             {currentView === 'CHAT' && (
-              <div className="flex items-center space-x-2">
-                  <button 
-                      onClick={() => {
-                        setIsSearchExpanded(!isSearchExpanded);
-                        if (isSearchExpanded) setSearchQuery("");
-                      }} 
-                      className={`text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors cursor-pointer flex items-center justify-center mr-1 ${isSearchExpanded ? 'text-[#1E40AF]' : ''}`}
-                  >
-                      <Search size={12} strokeWidth={2.5} />
-                  </button>
-
-                  <button className="w-5 h-5 bg-[#1E40AF] hover:bg-[#1D4ED8] flex items-center justify-center rounded-[2px] text-white shadow-sm transition-colors cursor-pointer border border-[#1E3A8A]">
-                      <UserPlus size={10} strokeWidth={2.5} />
-                  </button>
-
-                  <div className="flex items-center justify-center space-x-1 ml-1 text-[#6B7280] dark:text-[#9CA3AF] bg-black/5 dark:bg-white/5 h-5 px-1.5 rounded-[2px] border border-black/10 dark:border-white/10" title="Active Entities">
-                      <Hexagon size={9} strokeWidth={2.5} />
-                      <span className="font-mono text-[10px] font-bold leading-none mt-px tracking-tighter">
-                          {filteredContacts.length}
-                      </span>
-                  </div>
+              <div className="px-4 pb-2 pt-1">
+                <div className="h-9 bg-black/5 dark:bg-white/10 rounded-[10px] flex items-center px-2 space-x-1.5">
+                  <Search size={16} className="text-nexus-ink-muted" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="flex-1 bg-transparent border-none outline-none text-[17px] text-nexus-ink placeholder:text-nexus-ink-muted"
+                    placeholder="Search"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery("")} className="text-nexus-ink-muted hover:text-nexus-ink bg-black/10 dark:bg-white/20 rounded-full p-0.5">
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
         )}
 
-        {/* Row 3: Search Buffer (h-9) - ONLY WHEN EXPANDED */}
-        {!isConversationOpen && isSearchExpanded && (
-           <div className="absolute top-[72px] left-0 right-0 z-[3500] h-9 bg-white/40 dark:bg-black/40 backdrop-blur-md border-b flex items-center px-4 transition-all duration-300" style={{ borderColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
-              <div className="flex items-center w-full space-x-2">
-                 <Search size={10} className="text-black/30 dark:text-white/30" />
-                 <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 bg-transparent border-none outline-none text-[10px] font-mono text-black dark:text-white placeholder:text-black/20 dark:placeholder:text-white/20 uppercase tracking-widest"
-                    placeholder="INITIATE_SEARCH_PROTOCOL..."
-                    autoFocus
-                 />
-                 {searchQuery && (
-                    <button onClick={() => setSearchQuery("")} className="text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white">
-                       <X size={10} />
-                    </button>
-                 )}
-              </div>
-           </div>
-        )}
-
-        {/* Screen Content - Reclaimed Space */}
-        <div className={`flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col transition-colors duration-500 ${!isConversationOpen ? (isSearchExpanded ? 'pt-[108px]' : 'pt-[72px]') : 'pt-[36px]'}`}>
+        {/* Screen Content */}
+        <div className={`flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col transition-colors duration-300 
+          ${!isConversationOpen ? 
+            (isInitialized ? (currentView === 'CHAT' ? 'pt-[134px] sm:pt-[164px]' : 'pt-[44px] sm:pt-[74px]') : 'pt-0') 
+            : 'pt-0'} pb-[83px]`}
+        >
           {!isInitialized ? (
             <SecuritySetup onComplete={handleSetupComplete} />
           ) : (
@@ -324,10 +288,11 @@ export default function App() {
                 ) : (
                   <motion.div
                     key="Conversation"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-x-0 bottom-0 top-[36px] z-50 flex flex-col bg-nexus-bg"
+                    initial={{ opacity: 0, x: '100%' }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: '100%' }}
+                    transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                    className="absolute inset-0 z-50 flex flex-col bg-nexus-surface"
                   >
                     <Conversation 
                       messages={MOCK_MESSAGES} 
@@ -344,26 +309,35 @@ export default function App() {
           )}
         </div>
 
-        {/* Home Indicator */}
-        <div className="hidden sm:flex absolute bottom-[2px] left-1/2 -translate-x-1/2 w-[60px] h-[3px] bg-black/10 dark:bg-white/10 rounded-full z-[310] pointer-events-none" />
-        
-        {/* Bottom Nav */}
-        {isInitialized && (
-            <div className="absolute bottom-0 inset-x-0 h-12 bg-white/50 dark:bg-black/50 backdrop-blur-lg border-t border-black/10 dark:border-white/10 flex items-center justify-around z-[300]">
-                {/* Chat Tab */}
-                <button onClick={() => { setCurrentView('CHAT'); setIsConversationOpen(false); }} className="text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors">
-                    <MessageSquare size={20} />
+        {/* iOS Tab Bar */}
+        {isInitialized && !isConversationOpen && (
+            <div className="absolute bottom-0 inset-x-0 h-[64px] sm:h-[83px] bg-nexus-surface/90 backdrop-blur-xl border-t border-nexus-border flex items-start pt-1.5 justify-around z-[300] pb-safe">
+                <button 
+                  onClick={() => setCurrentView('CHAT')} 
+                  className={`flex flex-col items-center space-y-0.5 w-16 ${currentView === 'CHAT' ? 'text-nexus-accent-blue' : 'text-nexus-ink-muted'}`}
+                >
+                    <MessageSquare size={22} className={currentView === 'CHAT' ? 'fill-current' : ''} />
+                    <span className="text-[10px] font-medium">Chats</span>
                 </button>
-                {/* Nodes Tab */}
-                <button onClick={() => { setCurrentView('NODES'); setIsConversationOpen(false); }} className="text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors">
-                    <Radar size={20} />
+                <button 
+                  onClick={() => setCurrentView('NODES')} 
+                  className={`flex flex-col items-center space-y-0.5 w-16 ${currentView === 'NODES' ? 'text-nexus-accent-blue' : 'text-nexus-ink-muted'}`}
+                >
+                    <Radar size={22} />
+                    <span className="text-[10px] font-medium">Radar</span>
                 </button>
-                {/* Security/Settings Tab */}
-                <button onClick={() => { setCurrentView('SECURITY'); setIsConversationOpen(false); }} className="text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors">
-                    <Shield size={20} />
+                <button 
+                  onClick={() => setCurrentView('SECURITY')} 
+                  className={`flex flex-col items-center space-y-0.5 w-16 ${currentView === 'SECURITY' ? 'text-nexus-accent-blue' : 'text-nexus-ink-muted'}`}
+                >
+                    <Shield size={22} />
+                    <span className="text-[10px] font-medium">Settings</span>
                 </button>
             </div>
         )}
+
+        {/* Home Indicator (Mock for Desktop view) */}
+        <div className="hidden sm:flex absolute bottom-[8px] left-1/2 -translate-x-1/2 w-[134px] h-[5px] bg-nexus-ink rounded-full z-[5000] pointer-events-none" />
 
         {/* Overlays (Secure Layers) */}
         <AnimatePresence>
@@ -377,6 +351,7 @@ export default function App() {
               <MediaCall 
                 targetName={activeContact?.name || activeContact?.did || "EXTERNAL_NODE"} 
                 participantCount={callParticipantsCount}
+                initialMode={callMode}
                 onEndCall={() => {
                   setOverlayScreen(null);
                   setCallParticipantsCount(1);

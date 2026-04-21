@@ -1,10 +1,9 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @theme {
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
-  --font-display: "Space Grotesk", sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   
   --color-nexus-bg: var(--nexus-bg);
   --color-nexus-surface: var(--nexus-surface);
@@ -18,51 +17,52 @@
 }
 
 :root {
-  /* Institutional Premium Light Theme - Refined Contrast */
-  --nexus-bg: #F5F5F0;           /* Warm Institutional Ivory */
-  --nexus-surface: #FFFFFF;      /* Pure Paper White */
-  --nexus-ink: #141414;          /* High-Contrast Deep Ink */
-  --nexus-ink-alt: #333333;      /* Secondary hierarchy */
-  --nexus-ink-muted: #707070;    /* Legible Metadata */
-  --nexus-border: rgba(20, 20, 20, 0.08); /* Tangible Hairlines */
-  --nexus-accent-gold: #8B6F47;  /* Institutional Brass */
-  --nexus-accent-blue: #0047AB;  /* Authority Blue */
-  --nexus-accent-cyan: #008299;  /* Deep Sea Cyan */
+  /* iOS Light Theme */
+  --nexus-bg: #F2F2F7;           /* iOS System Grouped Background */
+  --nexus-surface: #FFFFFF;      /* iOS System Background */
+  --nexus-ink: #000000;          /* iOS Label */
+  --nexus-ink-alt: #3C3C43;      /* iOS Secondary Label (lightened for contrast) */
+  --nexus-ink-muted: rgba(60, 60, 67, 0.6); /* iOS Tertiary Label */
+  --nexus-border: rgba(60, 60, 67, 0.36);   /* iOS Separator */
+  --nexus-accent-gold: #FF9500;  /* iOS Orange */
+  --nexus-accent-blue: #007AFF;  /* iOS Blue */
+  --nexus-accent-cyan: #5AC8FA;  /* iOS Light Blue */
   --nexus-card: #FFFFFF;
-  --nexus-glow: rgba(0, 71, 171, 0.03);
+  --nexus-glow: rgba(0, 122, 255, 0.1);
 }
 
 .dark-theme,
 [data-theme='dark'] {
-  /* Institutional Premium Dark Theme - Pure Void Architecture */
-  --nexus-bg: #000000;           /* Pure OLED Void */
-  --nexus-surface: #080808;      /* Nero Matte Shards */
-  --nexus-ink: #FFFFFF;          /* Maximum Impact Text */
-  --nexus-ink-alt: #A0A0A0;      /* Ghost Imagery Metadata */
-  --nexus-ink-muted: #888888;    /* Stealth Telemetry - Adjusted for higher visibility on Nero surface */
-  --nexus-border: #18181A;       /* Visible Structural Integrity */
-  --nexus-accent-gold: #FFB800;  /* High-Energy Amber Signal */
-  --nexus-accent-blue: #00E0FF;  /* Radiant Signal Cyan */
-  --nexus-accent-cyan: #00E0FF;
-  --nexus-card: #050505;
-  --nexus-glow: rgba(0, 224, 255, 0.1);
+  /* iOS Dark Theme */
+  --nexus-bg: #000000;           /* iOS System Background (Dark) */
+  --nexus-surface: #1C1C1E;      /* iOS Secondary System Background (Dark) */
+  --nexus-ink: #FFFFFF;          /* iOS Label (Dark) */
+  --nexus-ink-alt: rgba(235, 235, 245, 0.6); /* iOS Secondary Label (Dark) */
+  --nexus-ink-muted: rgba(235, 235, 245, 0.3); /* iOS Tertiary Label (Dark) */
+  --nexus-border: rgba(84, 84, 88, 0.65); /* iOS Separator (Dark) */
+  --nexus-accent-gold: #FF9F0A;  /* iOS Orange (Dark) */
+  --nexus-accent-blue: #0A84FF;  /* iOS Blue (Dark) */
+  --nexus-accent-cyan: #64D2FF;  /* iOS Light Blue (Dark) */
+  --nexus-card: #1C1C1E;
+  --nexus-glow: rgba(10, 132, 255, 0.15);
 }
 
 @layer base {
   html, body {
-    @apply bg-nexus-bg text-nexus-ink transition-colors duration-500 selection:bg-nexus-accent-blue/10 selection:text-nexus-accent-blue;
+    @apply bg-nexus-bg text-nexus-ink transition-colors duration-300 selection:bg-nexus-accent-blue/20 selection:text-nexus-accent-blue;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   body {
-    @apply font-sans antialiased m-0 p-0 overflow-hidden min-h-screen w-full;
+    @apply font-sans m-0 p-0 overflow-hidden min-h-screen w-full overscroll-none;
+    /* iOS specific webkit touch callout */
+    -webkit-touch-callout: none;
   }
 
-  /* Institutional Grid - Very subtle */
+  /* Remove technical grid for clean iOS look */
   .technical-grid {
-    background-image: 
-      linear-gradient(var(--nexus-border) 1px, transparent 1px),
-      linear-gradient(90deg, var(--nexus-border) 1px, transparent 1px);
-    background-size: 20px 20px;
+    background: transparent;
   }
 
   ::-webkit-scrollbar {

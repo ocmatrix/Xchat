@@ -72,42 +72,37 @@ export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigat
               key={item.did} 
             >
               <button
-                className={`w-full flex items-center px-4 py-2 text-left cursor-pointer outline-none transition-colors bg-nexus-surface border-b border-nexus-border group relative`}
+                className={`w-full flex items-center px-4 py-2 text-left cursor-pointer outline-none transition-colors bg-nexus-surface group relative`}
                 onClick={() => onSelectContact(item)}
               >
                 <div className="flex items-center space-x-3 flex-1 min-w-0 relative z-10">
-                   {/* Perfect 40x40 Circular Headshot */}
                    <div className="relative shrink-0">
-                     <div className={`w-[40px] h-[40px] flex items-center justify-center relative rounded-full overflow-hidden bg-nexus-bg border border-nexus-border`}>
+                     <div className={`w-[52px] h-[52px] flex items-center justify-center relative rounded-full overflow-hidden bg-nexus-bg border border-nexus-border/50`}>
                        {item.avatar ? (
-                         <img src={item.avatar} alt="Avatar" className="w-full h-full object-cover object-center transition-transform group-hover:scale-110 duration-500" referrerPolicy="no-referrer" />
+                         <img src={item.avatar} alt="Avatar" className="w-full h-full object-cover object-center" referrerPolicy="no-referrer" />
                        ) : (
-                         <Fingerprint size={18} className="text-nexus-ink-muted opacity-20" strokeWidth={1} />
+                         <UserPlus size={24} className="text-nexus-ink-muted opacity-50" strokeWidth={1.5} />
                        )}
                      </div>
                      {item.online && (
-                       <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-nexus-accent-cyan border-2 border-nexus-surface z-30" />
+                       <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-nexus-surface z-30" />
                      )}
                    </div>
                    
-                   <div className="flex-1 min-w-0 flex flex-col justify-center py-0">
-                     <div className="flex items-center justify-between leading-none">
-                        <span className={`text-[13px] font-bold tracking-tight text-nexus-ink truncate flex-1 font-sans`}>
-                           {item.name || "UID_" + item.did.slice(-4).toUpperCase()}
+                   <div className="flex-1 min-w-0 flex flex-col justify-center py-2 border-b border-nexus-border/50 group-last:border-b-0 h-full">
+                     <div className="flex items-center justify-between leading-none mb-1">
+                        <span className={`text-[17px] font-semibold text-nexus-ink truncate flex-1 font-sans`}>
+                           {item.name || "Unknown"}
                         </span>
-                        <span className="text-nexus-ink-muted text-[9px] font-bold shrink-0 ml-2 tracking-tight">
+                        <span className="text-nexus-ink-muted text-[15px] shrink-0 ml-2">
                           {item.timestamp}
                         </span>
                      </div>
                      
-                     <div className="text-nexus-accent-blue font-bold text-[9px] truncate block tracking-tight leading-none mt-1 uppercase opacity-80">
-                       {item.online ? 'BROADCASTING_ACT' : 'OFFLINE_SHARD_IDLE'}
-                     </div>
-
-                     <div className="flex items-center justify-between mt-1 leading-none">
+                     <div className="flex items-center justify-between mt-0.5 leading-none">
                         <div className="flex-1 min-w-0 flex flex-col pr-2">
-                           <div className="text-nexus-ink-muted font-bold text-[8px] truncate block font-mono tracking-[0.5px] uppercase opacity-40">
-                             {item.lastCiphertext || "Awaiting signal..."}
+                           <div className="text-nexus-ink-muted text-[15px] truncate block font-sans">
+                             {item.lastCiphertext || "No recent messages"}
                            </div>
                         </div>
                         <AnimatePresence>
@@ -116,7 +111,7 @@ export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigat
                               initial={{ scale: 0 }}
                               animate={{ scale: 1 }}
                               exit={{ scale: 0 }}
-                              className="bg-nexus-accent-gold text-nexus-bg font-black text-[8px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full shrink-0 shadow-[0_0_12px_rgba(212,175,55,0.4)] border border-nexus-accent-gold/20 px-1.5"
+                              className="bg-nexus-accent-blue text-white font-medium text-[13px] min-w-[20px] h-[20px] flex items-center justify-center rounded-full shrink-0 px-1.5 ml-2"
                             >
                               {item.unreadCount > 99 ? '99+' : item.unreadCount}
                             </motion.div>
