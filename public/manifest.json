@@ -1,24 +1,24 @@
 {
-  "name": "Nexus P2P Terminal",
-  "short_name": "Nexus",
-  "description": "Decentralized P2P Sovereign Communication Terminal",
+  "name": "DOTCOM Sovereignty Protocol",
+  "short_name": "DOTCOM",
+  "description": "The Sovereign Communication Protocol v2.0",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#050505",
-  "theme_color": "#D4AF37",
+  "background_color": "#0A0A0A",
+  "theme_color": "#007AFF",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://picsum.photos/seed/nexus/192/192",
-      "type": "image/png",
+      "src": "https://api.dicebear.com/7.x/identicon/svg?seed=dotcom&backgroundColor=0A0A0A&fontFamily=Courier",
+      "type": "image/svg+xml",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "https://picsum.photos/seed/nexus/512/512",
-      "type": "image/png",
+      "src": "https://api.dicebear.com/7.x/identicon/svg?seed=dotcom&backgroundColor=0A0A0A&fontFamily=Courier",
+      "type": "image/svg+xml",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

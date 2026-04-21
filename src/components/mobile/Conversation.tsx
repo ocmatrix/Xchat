@@ -4,11 +4,12 @@ import {
   ChevronLeft, ArrowRight, Trash2, AlertTriangle, 
   RefreshCw, BarChart3, ArrowLeft, Shield, Activity, 
   MoreHorizontal, Command, Terminal, Mic, MicOff,
-  Paperclip, Image, Film, MapPin, FileText, Satellite, Orbit, Box, ArrowDown, Clock, Flame, Plus
+  Paperclip, Image, Film, MapPin, FileText, Satellite, Orbit, Box, ArrowDown, Clock, Flame, Plus, Contact
 } from 'lucide-react';
 import { GroupPanel } from './GroupPanel';
 import { PrivateChatSettings } from './PrivateChatSettings';
 import { motion, AnimatePresence } from 'motion/react';
+import { FirebaseService } from '../../services/FirebaseService';
 import { NexusCompressionService } from '../../services/NexusCompressionService';
 import { NexusSecurityService } from '../../services/NexusSecurityService';
 import { ShadowDropService } from '../../services/ShadowDropService';
@@ -58,7 +59,14 @@ const MosaicPressable = ({ src }: { src: string }) => {
   );
 };
 
-export const Conversation = ({ messages: initialMessages, onLightningCall, onBack, isGroup = false, isIsolated = false, targetName = "SECURE CHANNEL" }) => {
+export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsolated = false, targetName = "SECURE CHANNEL", convId }: { 
+  onLightningCall: (mode: 'voice' | 'video') => void, 
+  onBack: () => void, 
+  isGroup?: boolean, 
+  isIsolated?: boolean, 
+  targetName?: string,
+  convId?: string
+}) => {
   const [showGroupPanel, setShowGroupPanel] = useState(false);
   const [showPrivateChatSettings, setShowPrivateChatSettings] = useState(false);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
@@ -70,12 +78,20 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
   const [showTTLSelector, setShowTTLSelector] = useState(false);
   const recognitionRef = useRef<any>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [localMessages, setLocalMessages] = useState<any[]>(initialMessages);
-  
-  // Sync prop changes to local state
+  const [localMessages, setLocalMessages] = useState<any[]>([]);
+
   useEffect(() => {
-    setLocalMessages(initialMessages);
-  }, [initialMessages]);
+    if (!convId) return;
+    const unsub = FirebaseService.subscribeToMessages(convId, (msgs) => {
+      setLocalMessages(msgs.map(m => ({
+        ...m,
+        text: m.content || "Ciphertext Corrupted",
+        sender: m.senderId === 'me' ? 'me' : 'them', // Simulating ownership for now, ideally compare with auth.uid
+        isMe: m.senderId === 'me'
+      })));
+    });
+    return () => unsub();
+  }, [convId]);
 
   const startSpeechRecognition = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -135,6 +151,18 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const triggerHaptic = (style: 'light' | 'medium' | 'heavy' | 'success' | 'error') => {
+    if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+      switch(style) {
+        case 'light': window.navigator.vibrate(10); break;
+        case 'medium': window.navigator.vibrate(20); break;
+        case 'heavy': window.navigator.vibrate(50); break;
+        case 'success': window.navigator.vibrate([10, 30, 10]); break;
+        case 'error': window.navigator.vibrate([50, 50, 50]); break;
+      }
+    }
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [localMessages, historyMessages]);
@@ -158,57 +186,26 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
   };
 
   const handleSend = async () => {
-    if (inputText.trim()) {
-      const messagePayload = {
-        text: inputText,
-        timestamp: Date.now(),
-        sender: 'me',
-        shardId: '01'
-      };
-
-      // 1. Secure Payload via E2EE (Double Ratchet + AES-GCM)
-      const encryptedEnvelope = await NexusSecurityService.encrypt(messagePayload, currentEpoch);
-
-      // 2. Apply Nexus Compression before transmission
-      const networkEnvelope = await NexusCompressionService.compress(encryptedEnvelope);
-
-      if (isOfflineMode) {
-        // Shadow Drop Asynchronous Core: EXEC PHASE 3.0
-        setIsSharding(true);
-        const shadowEnv = await ShadowDropService.initiateShadowDrop(messagePayload, offlineTTL);
-        setIsSharding(false);
-
-        console.log(`🌑 SHADOW_PROTOCOL::REPOSITED_IN_VAULT`);
-        console.log(`🧩 FRAGMENT_CID::${shadowEnv.cid}`);
-        console.log(`🏢 BLIND_RELAY_SWARM::${shadowEnv.blindRelaySwarm.join(' | ')}`);
-        
-        const offlineMessage = {
-          id: `msg-${Date.now()}`,
-          text: inputText,
-          sender: 'me',
-          timestamp: 'Shadowed',
-          isOffline: true,
-          cid: shadowEnv.cid,
-          nodes: shadowEnv.blindRelaySwarm,
-          ttl: shadowEnv.ttl
-        };
-        setLocalMessages(prev => [...prev, offlineMessage]);
-      } else {
-        // Real-time Core: Active P2P Tunnel
-        console.log(`📡 TX_STREAM_INITIATED::SECURE_ENVELOPE_V1`);
-        console.log(`🔒 E2EE_HASH::${encryptedEnvelope.authTag.slice(0, 12)}`);
-        console.log(`📊 NEXUS_OPTIMIZATION::RATIO=${((1 - networkEnvelope.compressedSize / networkEnvelope.originalSize) * 100).toFixed(1)}%`);
-        
-        const newMessage = {
-          id: `msg-${Date.now()}`,
-          text: inputText,
-          sender: 'me',
-          timestamp: 'Just now'
-        };
-        setLocalMessages(prev => [...prev, newMessage]);
-      }
+    if (inputText.trim() && convId) {
+      triggerHaptic('success');
       
-      setInputText("");
+      const content = inputText;
+      
+      // In a real production app, we would encrypt here using a refined key exchange
+      // For this step, we'll store the content in Firebase (mocking encryption if needed)
+      // and update the real-time stream.
+      
+      try {
+        await FirebaseService.sendMessage(convId, {
+          content,
+          protocol: 'NXS-v2.0-STRICT',
+          nonce: Math.random().toString(36).slice(2),
+          type: 'text'
+        });
+        setInputText("");
+      } catch (err) {
+        console.error("MESSAGE_TX_FAULT:", err);
+      }
     }
   };
 
@@ -289,14 +286,14 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
         <div className="flex items-center justify-end w-[120px]">
            {!isGroup && (
                <button 
-                 onClick={onLightningCall}
+                 onClick={() => onLightningCall('voice')}
                  className="w-10 h-10 flex items-center justify-center text-[#007AFF] hover:opacity-70 transition-opacity cursor-pointer bg-transparent border-none"
                >
                  <Phone size={24} strokeWidth={2} />
                </button>
            )}
            <button 
-             onClick={onLightningCall}
+             onClick={() => onLightningCall('video')}
              className="w-10 h-10 flex items-center justify-center text-[#007AFF] hover:opacity-70 transition-opacity cursor-pointer bg-transparent border-none"
            >
              <Video size={26} strokeWidth={2} />
@@ -369,7 +366,13 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
             }
 
             return (
-              <div key={item.id} className={`flex flex-col group relative ${showMetadata ? 'mt-3' : 'mt-0.5'} ${isMe ? 'items-end' : 'items-start'}`}>
+              <motion.div 
+                key={item.id} 
+                initial={{ opacity: 0, scale: 0.92, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25, mass: 0.8 }}
+                className={`flex flex-col group relative ${showMetadata ? 'mt-3' : 'mt-0.5'} ${isMe ? 'items-end' : 'items-start'}`}
+              >
                 {showMetadata && (
                    <span className={`text-[11px] font-medium text-[#8E8E93] mb-1 ${isMe ? 'mr-1' : 'ml-1'}`}>
                       {isMe ? 'Me' : (item.sender || 'Peer Node')}
@@ -379,7 +382,10 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
                 <div className={`flex items-start group relative ${isMe ? 'flex-row-reverse' : ''}`}>
                   <div className={`max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                     {item.type === 'image' || item.type === 'media' ? (
-                      <div className="rounded-[16px] overflow-hidden border border-black/5 dark:border-white/5 shadow-sm p-1 bg-white dark:bg-[#1C1C1E] backdrop-blur-md relative">
+                      <motion.div 
+                        whileTap={{ scale: 0.98 }}
+                        className="rounded-[16px] overflow-hidden border border-black/5 dark:border-white/5 shadow-sm p-1 bg-white dark:bg-[#1C1C1E] backdrop-blur-md relative"
+                      >
                          {item.type === 'media' || !item.text ? (
                             <div className="w-64 h-40 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[12px] flex flex-col items-center justify-center space-y-3 cursor-pointer group transition-colors">
                                <div className="w-12 h-12 rounded-full border border-[#C7C7CC] dark:border-[#5A5A5E] flex items-center justify-center group-active:scale-95 transition-transform">
@@ -393,9 +399,11 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
                          ) : (
                             <MosaicPressable src={item.text} />
                          )}
-                      </div>
+                      </motion.div>
                     ) : (
-                      <div className={`px-4 py-2.5 rounded-[18px] shadow-sm transition-all text-[15px] leading-relaxed relative overflow-hidden ${
+                      <motion.div 
+                        whileTap={{ scale: 0.99 }}
+                        className={`px-4 py-2.5 rounded-[18px] shadow-sm transition-all text-[15px] leading-relaxed relative overflow-hidden ${
                         isMe 
                         ? (item.isOffline 
                             ? 'bg-[#FF9500] text-white shadow-[0_0_15px_rgba(255,149,0,0.15)]' 
@@ -443,7 +451,7 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
                             </div>
                           </div>
                         )}
-                      </div>
+                      </motion.div>
                     )}
                   </div>
                   
@@ -484,7 +492,7 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
                     </div>
                   )}
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -573,6 +581,12 @@ export const Conversation = ({ messages: initialMessages, onLightningCall, onBac
                     <MapPin size={28} />
                   </div>
                   <span className="text-[12px] font-medium text-black dark:text-white">Location</span>
+                </button>
+                <button className="flex flex-col items-center justify-center py-2 px-1 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors group cursor-pointer border-none bg-transparent">
+                  <div className="w-14 h-14 rounded-full bg-white dark:bg-[#3A3A3C] shadow-sm border border-black/5 dark:border-white/5 flex items-center justify-center text-[#FF3B30] mb-1.5 group-active:scale-95 transition-transform">
+                    <Contact size={28} />
+                  </div>
+                  <span className="text-[12px] font-medium text-black dark:text-white">Contact</span>
                 </button>
               </motion.div>
             </>

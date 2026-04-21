@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
+  Volume2, VolumeX,
   Mic, MicOff, Video, VideoOff, PhoneOff, Lock, 
   AlertCircle, Loader2, RefreshCw, ArrowLeft, 
   Shield, Activity, CameraOff, MoreVertical, 
@@ -11,17 +12,19 @@ interface MediaCallProps {
   onEndCall: () => void;
   targetName: string;
   participantCount?: number;
+  callMode?: 'voice' | 'video';
 }
 
-export const MediaCall = ({ onEndCall, targetName, participantCount = 1 }: MediaCallProps) => {
+export const MediaCall = ({ onEndCall, targetName, participantCount = 1, callMode = 'video' }: MediaCallProps) => {
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(callMode === 'voice');
   const [callDuration, setCallDuration] = useState(0);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isMediaLoading, setIsMediaLoading] = useState(true);
   const [iceState, setIceState] = useState<RTCIceConnectionState>('new');
   const [connectionStrategy, setConnectionStrategy] = useState<'P2P' | 'SFU'>('P2P');
+  const [speakerOn, setSpeakerOn] = useState(true);
   
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -98,7 +101,7 @@ export const MediaCall = ({ onEndCall, targetName, participantCount = 1 }: Media
       // Standardize constraints for high-fidelity institutional link
       const constraints = { 
         audio: true, 
-        video: { 
+        video: callMode === 'voice' ? false : { 
           facingMode: 'user',
           width: { ideal: 1280 },
           height: { ideal: 720 }
@@ -295,47 +298,80 @@ export const MediaCall = ({ onEndCall, targetName, participantCount = 1 }: Media
       </AnimatePresence>
 
       {/* Main Feed Viewport (Grid layout for participants) */}
-      <div className="flex-1 relative z-10 p-2 pb-[100px] pt-20 h-full w-full overflow-hidden">
-        <div className={`w-full h-full grid gap-2 ${getGridLayout()}`}>
-          {renderRemoteFeeds()}
-        </div>
+      <div className="flex-1 relative z-10 p-2 pb-[100px] pt-20 h-full w-full overflow-hidden flex flex-col">
+        {callMode === 'voice' ? (
+          <div className="flex-1 flex flex-col items-center justify-center space-y-8 animate-in fade-in zoom-in duration-700">
+            {/* Minimalist Profile section */}
+            <div className="relative">
+              <motion.div 
+                animate={{ scale: [1, 1.05, 1] }} 
+                transition={{ duration: 3, repeat: Infinity }}
+                className="w-32 h-32 rounded-full bg-[#1A1A1C] border border-white/5 flex items-center justify-center overflow-hidden shadow-2xl"
+              >
+                <div className="w-24 h-24 rounded-full bg-nexus-blue/10 flex items-center justify-center text-nexus-blue text-4xl font-black">
+                  {targetName.charAt(0).toUpperCase()}
+                </div>
+              </motion.div>
+              {/* Pulse waves */}
+              <div className="absolute inset-0 -z-10 bg-nexus-blue/20 rounded-full animate-ping opacity-20 scale-150" />
+            </div>
 
-        {/* Local Node PIP Stream (Floating) */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-          className={`absolute z-30 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.9)] transition-all duration-500 border border-white/10 ${getPipStyles()}`}
-        >
-          <div className="w-full h-full relative bg-[#1C1C1E]">
-            {isMediaLoading && (
-               <div className="absolute inset-0 flex items-center justify-center z-10">
-                  <Loader2 size={18} className="text-[#FFFFFF] animate-spin" />
-               </div>
-            )}
-            
-            <video 
-              ref={localVideoRef}
-              autoPlay 
-              playsInline 
-              muted 
-              className={`w-full h-full object-cover transition-opacity duration-1000 ${isVideoOff || isMediaLoading || cameraError ? 'opacity-0' : 'opacity-100'} -scale-x-100`}
-            />
+            <div className="flex flex-col items-center space-y-2">
+              <h2 className="text-white text-2xl font-black tracking-tight">{targetName}</h2>
+              <div className="flex items-center space-x-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#00FF41] animate-pulse" />
+                <span className="text-white/40 text-[10px] font-mono tracking-widest uppercase font-bold">Encrypted Voice Channel</span>
+              </div>
+            </div>
 
-            {isVideoOff && !isMediaLoading && !cameraError && (
-              <div className="absolute inset-0 flex items-center justify-center bg-[#2C2C2E]">
-                 <CameraOff size={20} className="text-[#8E8E93]" strokeWidth={1.5} />
-              </div>
-            )}
-            
-            {/* PIP Badge */}
-            {!isMediaLoading && !cameraError && (
-              <div className="absolute bottom-1 right-1 px-1 bg-black/40 rounded-[1px] border border-white/5">
-                <span className="text-[5px] text-white/40 uppercase font-black tracking-tighter">LOCAL_NODE</span>
-              </div>
-            )}
+            <div className="bg-black/40 border border-white/5 px-4 py-2 rounded-full">
+               <span className="text-nexus-blue font-mono text-sm font-black tabular-nums">{formatTime(callDuration)}</span>
+            </div>
           </div>
-        </motion.div>
+        ) : (
+          <>
+            <div className={`w-full h-full grid gap-2 ${getGridLayout()}`}>
+              {renderRemoteFeeds()}
+            </div>
+
+            {/* Local Node PIP Stream (Floating) */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              className={`absolute z-30 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.9)] transition-all duration-500 border border-white/10 ${getPipStyles()}`}
+            >
+              <div className="w-full h-full relative bg-[#1C1C1E]">
+                {isMediaLoading && (
+                   <div className="absolute inset-0 flex items-center justify-center z-10">
+                      <Loader2 size={18} className="text-[#FFFFFF] animate-spin" />
+                   </div>
+                )}
+                
+                <video 
+                  ref={localVideoRef}
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  className={`w-full h-full object-cover transition-opacity duration-1000 ${isVideoOff || isMediaLoading || cameraError ? 'opacity-0' : 'opacity-100'} -scale-x-100`}
+                />
+
+                {isVideoOff && !isMediaLoading && !cameraError && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#2C2C2E]">
+                     <CameraOff size={20} className="text-[#8E8E93]" strokeWidth={1.5} />
+                  </div>
+                )}
+                
+                {/* PIP Badge */}
+                {!isMediaLoading && !cameraError && (
+                  <div className="absolute bottom-1 right-1 px-1 bg-black/40 rounded-[1px] border border-white/5">
+                    <span className="text-[5px] text-white/40 uppercase font-black tracking-tighter">LOCAL_NODE</span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
       </div>
 
       {/* System Error Modal */}
@@ -409,15 +445,27 @@ export const MediaCall = ({ onEndCall, targetName, participantCount = 1 }: Media
                   <span className="text-[7px] font-black tracking-widest mt-0.5 uppercase font-sans">{isMuted ? 'MUTED' : 'MIC'}</span>
                 </button>
                 
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setIsVideoOff(!isVideoOff); }}
-                  className={`flex-1 h-11 rounded-[2px] mx-0.5 flex flex-col items-center justify-center transition-all border border-transparent cursor-pointer ${
-                    isVideoOff ? 'bg-[#FF3B30]/10 text-[#FF3B30] border-[#FF3B30]/20' : 'bg-[#1A1A1C] text-[#E5E5E5] hover:bg-[#242426] border-white/5 shadow-inner'
-                  }`}
-                >
-                  {isVideoOff ? <VideoOff size={14} strokeWidth={2.5} /> : <Video size={14} strokeWidth={2.5} />}
-                  <span className="text-[7px] font-black tracking-widest mt-0.5 uppercase font-sans">{isVideoOff ? 'NO_CAM' : 'CAM'}</span>
-                </button>
+                {callMode === 'voice' ? (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setSpeakerOn(!speakerOn); }}
+                    className={`flex-1 h-11 rounded-[2px] mx-0.5 flex flex-col items-center justify-center transition-all border border-transparent cursor-pointer ${
+                      !speakerOn ? 'bg-[#FF3B30]/10 text-[#FF3B30] border-[#FF3B30]/20' : 'bg-[#1A1A1C] text-[#E5E5E5] hover:bg-[#242426] border-white/5 shadow-inner'
+                    }`}
+                  >
+                    {speakerOn ? <Volume2 size={14} strokeWidth={2.5} /> : <VolumeX size={14} strokeWidth={2.5} />}
+                    <span className="text-[7px] font-black tracking-widest mt-0.5 uppercase font-sans">{speakerOn ? 'SPEAKER' : 'PHONE'}</span>
+                  </button>
+                ) : (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setIsVideoOff(!isVideoOff); }}
+                    className={`flex-1 h-11 rounded-[2px] mx-0.5 flex flex-col items-center justify-center transition-all border border-transparent cursor-pointer ${
+                      isVideoOff ? 'bg-[#FF3B30]/10 text-[#FF3B30] border-[#FF3B30]/20' : 'bg-[#1A1A1C] text-[#E5E5E5] hover:bg-[#242426] border-white/5 shadow-inner'
+                    }`}
+                  >
+                    {isVideoOff ? <VideoOff size={14} strokeWidth={2.5} /> : <Video size={14} strokeWidth={2.5} />}
+                    <span className="text-[7px] font-black tracking-widest mt-0.5 uppercase font-sans">{isVideoOff ? 'NO_CAM' : 'CAM'}</span>
+                  </button>
+                )}
                 
                 <button 
                   onClick={(e) => { e.stopPropagation(); onEndCall(); }}

@@ -1,6 +1,6 @@
 {
-  "name": "Nexus P2P Terminal",
-  "description": "Decentralized P2P Sovereign Communication Terminal featuring real-time node synchronization, group governance, and non-custodial identity management.",
+  "name": "DOTCOM Sovereignty Protocol",
+  "description": "The Sovereign Communication Protocol featuring real-time node synchronization, secure messaging, and hardware-attested identity management.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": []
 }

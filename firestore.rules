@@ -1,0 +1,99 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helper Functions ---
+    
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Entity Validations ---
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['did', 'name', 'status', 'lastSeen', 'updatedAt'])
+        && data.did is string && data.did.size() <= 200
+        && data.name is string && data.name.size() <= 100
+        && data.status in ['online', 'offline', 'busy']
+        && data.lastSeen == request.time
+        && data.updatedAt == request.time;
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['senderId', 'content', 'protocol', 'nonce', 'timestamp', 'type'])
+        && data.senderId == request.auth.uid
+        && data.content is string && data.content.size() <= 200000 // 200k limit for secure payloads
+        && data.protocol is string && data.protocol.size() <= 50
+        && data.nonce is string && data.nonce.size() <= 128
+        && data.timestamp == request.time
+        && data.type in ['text', 'image', 'file', 'call', 'signal'];
+    }
+
+    // --- Match Groups ---
+
+    // 1. Users Collection
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if false; // No directory scraping
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming())
+        && incoming().did == existing().did; // Immutable DID
+    }
+
+    // 2. Conversations
+    match /conversations/{convId} {
+      allow get: if isSignedIn() && request.auth.uid in existing().participants;
+      allow list: if isSignedIn() && resource.data.participants.hasAny([request.auth.uid]);
+      
+      allow create: if isSignedIn() 
+        && incoming().participants.hasAny([request.auth.uid])
+        && incoming().participants.size() >= 2;
+        
+      allow update: if isSignedIn() && request.auth.uid in existing().participants
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['updatedAt', 'lastMessage']);
+
+      // 3. Messages Sub-collection
+      match /messages/{msgId} {
+        allow list: if isSignedIn() 
+          && get(/databases/$(database)/documents/conversations/$(convId)).data.participants.hasAny([request.auth.uid]);
+        
+        allow create: if isSignedIn()
+          && get(/databases/$(database)/documents/conversations/$(convId)).data.participants.hasAny([request.auth.uid])
+          && isValidMessage(incoming());
+          
+        allow delete: if false; // Messages are immutable for audit/protocol reasons unless sharding happens
+      }
+    }
+
+    // 4. Invites
+    match /invites/{code} {
+      allow get: if true; // Public check for join
+      allow create: if isSignedIn() 
+        && incoming().expiresAt > request.time
+        && incoming().createdBy == request.auth.uid;
+    }
+  }
+}

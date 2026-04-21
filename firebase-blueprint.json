@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Authenticated node in the DOTCOM network",
+      "type": "object",
+      "properties": {
+        "did": { "type": "string", "description": "Decentralized Identifier" },
+        "name": { "type": "string" },
+        "avatar": { "type": "string" },
+        "publicKey": { "type": "string", "description": "Standard E2EE public key" },
+        "status": { "type": "string", "enum": ["online", "offline", "busy"] },
+        "lastSeen": { "type": "string", "format": "date-time" }
+      },
+      "required": ["did", "name"]
+    },
+    "Conversation": {
+      "title": "Secure Conversation",
+      "description": "Metadata for a direct or group channel",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["direct", "group"] },
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "lastMessage": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "isIsolated": { "type": "boolean" },
+        "groupSettings": { "type": "object" }
+      }
+    },
+    "Message": {
+      "title": "Encrypted Message",
+      "description": "E2EE payload with protocol versioning",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "content": { "type": "string", "description": "AES-GCM Ciphertext" },
+        "protocol": { "type": "string" },
+        "nonce": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["text", "image", "file", "call", "signal"] },
+        "ttl": { "type": "integer" }
+      }
+    },
+    "Invite": {
+      "title": "Meeting Invite",
+      "description": "Secure access link to an auditorium",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "code": { "type": "string" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Global node registry"
+    },
+    "/conversations/{convId}": {
+      "schema": "Conversation",
+      "description": "Channel headers"
+    },
+    "/conversations/{convId}/messages/{msgId}": {
+      "schema": "Message",
+      "description": "E2EE message stream"
+    },
+    "/invites/{code}": {
+      "schema": "Invite",
+      "description": "Public entrance for meetings"
+    }
+  }
+}

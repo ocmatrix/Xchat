@@ -1,5 +1,10 @@
 import React, { useState, useEffect, Component, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { AuthWall } from './components/mobile/AuthWall';
+import { auth, db } from './lib/firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { collection, onSnapshot, query, limit } from 'firebase/firestore';
+import { FirebaseService } from './services/FirebaseService';
 import { ChatList } from './components/mobile/ChatList';
 import { Conversation } from './components/mobile/Conversation';
 import { ProfileSettings } from './components/mobile/ProfileSettings';
@@ -148,9 +153,46 @@ export default function App() {
   const [myDid, setMyDid] = useState("");
   const [activeContact, setActiveContact] = useState<any>(null);
   const [overlayScreen, setOverlayScreen] = useState<'MediaCall' | 'InitiateGroup' | 'PeerDiscovery' | 'AuditoriumMeeting' | null>(null);
+  const [callMode, setCallMode] = useState<'voice' | 'video'>('video');
   const [isMeetingMinimized, setIsMeetingMinimized] = useState(false);
   const [callParticipantsCount, setCallParticipantsCount] = useState(1);
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [activeNodes, setActiveNodes] = useState<any[]>([]);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setCurrentUser(user);
+        const deterministicDid = `nexus:node:${user.uid.slice(0, 8)}`;
+        setMyDid(deterministicDid);
+        setIsInitialized(true);
+      } else {
+        setCurrentUser(null);
+        setIsInitialized(false);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const q = query(collection(db, 'users'), limit(50));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const nodes = snapshot.docs
+        .filter(d => d.id !== currentUser.uid)
+        .map(d => ({
+          ...d.data(),
+          id: d.id,
+          isGroup: false,
+          online: d.data().status === 'online',
+          lastCiphertext: 'Established: Secure Link',
+          timestamp: 'NOW'
+        }));
+      setActiveNodes(nodes);
+    });
+    return () => unsub();
+  }, [currentUser]);
 
   useEffect(() => {
     if (theme === 'light') {
@@ -162,9 +204,17 @@ export default function App() {
     }
   }, [theme]);
 
-  const handleSelectContact = (contact: any) => {
-    setActiveContact(contact);
+  const handleSelectContact = async (contact: any) => {
     setIsConversationOpen(true);
+    let convId = contact.id;
+    
+    // For direct chats, if id is just the UID, we need to find/create the conversation doc
+    if (!contact.isGroup) {
+      const resolvedId = await FirebaseService.getOrCreateDirectConversation(contact.did);
+      convId = resolvedId;
+    }
+    
+    setActiveContact({ ...contact, convId });
   };
 
   const handleBack = () => {
@@ -177,7 +227,15 @@ export default function App() {
     setIsInitialized(true);
   };
 
-  const startMediaCall = () => {
+  const handleLogout = async () => {
+    await signOut(auth);
+    setIsInitialized(false);
+    setActiveContact(null);
+    setIsConversationOpen(false);
+  };
+
+  const startMediaCall = (mode: 'voice' | 'video' = 'video') => {
+    setCallMode(mode);
     if (activeContact && activeContact.isGroup) {
       setOverlayScreen('AuditoriumMeeting');
     } else {
@@ -185,11 +243,11 @@ export default function App() {
     }
   };
 
-  const filteredContacts = MOCK_CONTACTS.filter(c => {
+  const filteredContacts = activeNodes.filter(c => {
     if (activeTab === 'ONLINE') return c.online;
     return true;
   }).sort((a, b) => {
-    if (activeTab === 'A-Z') return a.name.localeCompare(b.name);
+    if (activeTab === 'A-Z') return (a.name || '').localeCompare(b.name || '');
     return 0;
   });
 
@@ -198,8 +256,12 @@ export default function App() {
       {/* Container - Command Center Architecture */}
       <div className={`w-full h-[100dvh] sm:w-[393px] sm:h-[852px] ${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-transparent'} flex flex-col relative sm:border sm:border-black/10 dark:sm:border-white/10 sm:rounded-[6px] overflow-hidden transition-colors duration-500 shadow-2xl`}>
         
-        {/* Row 1: System Telemetry & Status (h-9) - HIDDEN WHEN IN CONVERSATION */}
-        {isInitialized && !isConversationOpen && (
+        {!currentUser ? (
+          <AuthWall onSuccess={handleSetupComplete} />
+        ) : (
+          <>
+            {/* Row 1: System Telemetry & Status (h-9) - HIDDEN WHEN IN CONVERSATION */}
+        {!isConversationOpen && (
           <div className="absolute top-0 left-0 right-0 z-[5000] w-full bg-white/40 dark:bg-black/40 backdrop-blur-md border-b flex items-center justify-between h-9 px-4 transition-all duration-500" style={{ borderColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
             
             {/* Left: Brand + Active Dot + Telemetry */}
@@ -308,11 +370,8 @@ export default function App() {
 
         {/* Screen Content - Reclaimed Space */}
         <div className={`flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col transition-colors duration-500 pt-0`}>
-          {!isInitialized ? (
-            <SecuritySetup onComplete={handleSetupComplete} />
-          ) : (
-            <ErrorBoundary>
-              <AnimatePresence mode="wait">
+          <ErrorBoundary>
+            <AnimatePresence mode="wait">
                 {!isConversationOpen ? (
                   <motion.div
                     key={currentView}
@@ -330,8 +389,16 @@ export default function App() {
                         searchQuery={searchQuery}
                       />
                     )}
-                    {currentView === 'NODES' && <NodeRegistry contacts={MOCK_CONTACTS} onDiscovery={() => {}} />}
-                    {currentView === 'SECURITY' && <ProfileSettings did={myDid || "did:key:mOCK_1234567890"} devices={MOCK_DEVICES} />}
+                    {currentView === 'NODES' && <NodeRegistry contacts={activeNodes} onDiscovery={() => {}} />}
+                    {currentView === 'SECURITY' && (
+                      <ProfileSettings 
+                        did={myDid || "did:key:mOCK_1234567890"} 
+                        displayName={currentUser?.displayName}
+                        email={currentUser?.email}
+                        devices={MOCK_DEVICES} 
+                        onLogout={handleLogout}
+                      />
+                    )}
                   </motion.div>
                 ) : (
                   <motion.div
@@ -342,25 +409,24 @@ export default function App() {
                     className="absolute inset-x-0 bottom-0 top-0 z-[6000] flex flex-col bg-nexus-bg"
                   >
                     <Conversation 
-                      messages={MOCK_MESSAGES} 
                       onLightningCall={startMediaCall}
                       onBack={handleBack}
                       isGroup={activeContact?.isGroup}
+                      convId={activeContact?.convId}
                       isIsolated={activeContact?.isIsolated}
-                      targetName={activeContact?.name || (activeContact?.did.includes(':') ? `${activeContact.did.slice(0, 12)}...` : activeContact?.did)}
+                      targetName={activeContact?.name || (activeContact?.did && activeContact.did.includes(':') ? `${activeContact.did.slice(0, 12)}...` : activeContact?.did)}
                     />
                   </motion.div>
                 )}
-              </AnimatePresence>
-            </ErrorBoundary>
-          )}
-        </div>
+          </AnimatePresence>
+        </ErrorBoundary>
+      </div>
 
         {/* Home Indicator */}
         <div className="hidden sm:flex absolute bottom-[2px] left-1/2 -translate-x-1/2 w-[60px] h-[3px] bg-black/10 dark:bg-white/10 rounded-full z-[310] pointer-events-none" />
         
         {/* Bottom Nav */}
-        {isInitialized && !isConversationOpen && (
+        {!isConversationOpen && (
             <div className="absolute bottom-0 inset-x-0 h-12 bg-white/50 dark:bg-black/50 backdrop-blur-lg border-t border-black/10 dark:border-white/10 flex items-center justify-around z-[300]">
                 {/* Chat Tab */}
                 <button onClick={() => { setCurrentView('CHAT'); setIsConversationOpen(false); }} className="text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors">
@@ -389,6 +455,7 @@ export default function App() {
               <MediaCall 
                 targetName={activeContact?.name || activeContact?.did || "EXTERNAL_NODE"} 
                 participantCount={callParticipantsCount}
+                callMode={callMode}
                 onEndCall={() => {
                   setOverlayScreen(null);
                   setCallParticipantsCount(1);
@@ -474,7 +541,7 @@ export default function App() {
                className="absolute inset-0 z-[8000]"
             >
                <InitiateGroup 
-                  contacts={MOCK_CONTACTS.filter(c => !c.isGroup)} 
+                  contacts={activeNodes.filter(c => !c.isGroup)} 
                   onClose={() => setOverlayScreen(null)} 
                   onStartCall={(peers) => {
                     setCallParticipantsCount(peers.length + 1);
@@ -485,6 +552,8 @@ export default function App() {
           )}
         </AnimatePresence>
 
+          </>
+        )}
       </div>
     </div>
   );

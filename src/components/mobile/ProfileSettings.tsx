@@ -40,11 +40,17 @@ import {
 export const ProfileSettings = ({
   did,
   devices,
+  displayName,
+  email,
+  onLogout
 }: {
   did: string;
   devices: any[];
+  displayName?: string;
+  email?: string;
+  onLogout?: () => void;
 }) => {
-  const [alias, setAlias] = useState("CYBER_NOMAD");
+  const [alias, setAlias] = useState(displayName || "CYBER_NOMAD");
   const [bio, setBio] = useState(
     "ENCRYPTED HUMAN ENTITY // MESH_OPERATOR_01 // VOID_RUNNER",
   );
@@ -1137,7 +1143,16 @@ export const ProfileSettings = ({
         </AnimatePresence>
 
         {/* Module C: System Actions */}
-        <div className="pt-4 pb-12">
+        <div className="pt-4 pb-12 space-y-3">
+          {onLogout && (
+            <button
+              className="w-full h-12 bg-red-500/10 dark:bg-red-500/10 flex items-center justify-center space-x-2 active:bg-red-500/20 transition-colors cursor-pointer rounded-[10px] text-red-500 border border-red-500/20"
+              onClick={onLogout}
+            >
+              <Trash2 size={18} />
+              <span className="font-mono text-[11px] font-bold uppercase tracking-widest">Terminate Session</span>
+            </button>
+          )}
           <button
             className="w-full h-12 bg-white dark:bg-[#1C1C1E] flex items-center justify-center space-x-2 active:bg-black/5 dark:active:bg-white/5 transition-colors cursor-pointer rounded-[10px]"
             onClick={() => console.log("VAULT_PURGE")}
