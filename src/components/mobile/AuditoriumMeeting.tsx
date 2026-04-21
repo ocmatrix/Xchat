@@ -11,6 +11,7 @@ interface AuditoriumMeetingProps {
   roomName: string;
   initialRole?: 'HOST' | 'LISTENER';
   onDisconnect: () => void;
+  onMinimize?: () => void;
 }
 
 interface Participant {
@@ -24,7 +25,8 @@ interface Participant {
 export const AuditoriumMeeting: React.FC<AuditoriumMeetingProps> = ({ 
   roomName, 
   initialRole = 'LISTENER', 
-  onDisconnect 
+  onDisconnect,
+  onMinimize
 }) => {
   const [role, setRole] = useState<'HOST' | 'SPEAKER' | 'LISTENER'>(initialRole);
   const [handRaised, setHandRaised] = useState(false);
@@ -74,9 +76,6 @@ export const AuditoriumMeeting: React.FC<AuditoriumMeetingProps> = ({
 
     // High-Density Compression Simulation Engine
     const mediaEngineTimer = setInterval(() => {
-      // ICE connection is now optimized, removing the simulated random drop.
-      // Keeping the system stable to avoid "ICE Candidate Connection Interrupted" issues.
-
       setCompressionStats(prev => {
         const baseEfficiency = 42; // AV1 standard over H264
         const jitter = Math.random() * 5 - 2.5;
@@ -319,6 +318,14 @@ export const AuditoriumMeeting: React.FC<AuditoriumMeetingProps> = ({
       {/* Header */}
       <div className="shrink-0 h-16 border-b border-white/10 flex items-center justify-between px-4">
         <div className="flex items-center space-x-3">
+          {onMinimize && (
+            <button 
+              onClick={onMinimize}
+              className="mr-1 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+          )}
           <div className="flex flex-col">
             <div className="flex items-center space-x-2">
               <span className="text-[14px] font-black uppercase tracking-[2px]">{roomName}</span>

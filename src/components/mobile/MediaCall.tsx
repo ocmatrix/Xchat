@@ -13,10 +13,10 @@ interface MediaCallProps {
   participantCount?: number;
 }
 
-export const MediaCall = ({ onEndCall, targetName, participantCount = 1, initialMode = 'video' }: MediaCallProps & { initialMode?: 'audio' | 'video' }) => {
+export const MediaCall = ({ onEndCall, targetName, participantCount = 1 }: MediaCallProps) => {
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(initialMode === 'audio');
+  const [isVideoOff, setIsVideoOff] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isMediaLoading, setIsMediaLoading] = useState(true);
@@ -33,24 +33,14 @@ export const MediaCall = ({ onEndCall, targetName, participantCount = 1, initial
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun3.l.google.com:19302' },
-      { urls: 'stun:stun4.l.google.com:19302' },
       { 
         urls: 'turn:turn.nexus-relay.io:3478', 
         username: 'nexus_user', 
         credential: 'ephemeral_token_2026' 
-      },
-      { 
-        urls: 'turn:turn.nexus-relay-fallback.io:443', 
-        username: 'nexus_fallback', 
-        credential: 'ephemeral_token_fallback' 
       }
     ],
-    iceCandidatePoolSize: 20, // Increased pool size for faster negotiation
-    iceTransportPolicy: 'all',
-    bundlePolicy: 'max-bundle', // Optimize by bundling all media streams over a single transport
-    rtcpMuxPolicy: 'require'    // Require RTCP multiplexing to reduce port usage
+    iceCandidatePoolSize: 10,
+    iceTransportPolicy: 'all'
   };
 
   const initWebRTC = async (stream: MediaStream) => {
@@ -81,10 +71,10 @@ export const MediaCall = ({ onEndCall, targetName, participantCount = 1, initial
 
       // In a real app, we would handle signaling here (createOffer, setLocalDescription, etc.)
       
-      // Simulate real-time ICE process for the visual demo (Optimized timings)
-      setTimeout(() => setIceState('gathering'), 200);
-      setTimeout(() => setIceState('checking'), 500);
-      setTimeout(() => setIceState('connected'), 1000);
+      // Simulate real-time ICE process for the visual demo
+      setTimeout(() => setIceState('gathering'), 500);
+      setTimeout(() => setIceState('checking'), 1500);
+      setTimeout(() => setIceState('connected'), 2500);
       
     } catch (err) {
       console.error("RTC_INIT_FAILURE:", err);

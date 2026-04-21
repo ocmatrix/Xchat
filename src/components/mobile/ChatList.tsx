@@ -66,44 +66,46 @@ export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigat
     <div className="bg-transparent flex flex-col font-sans shrink-0 min-h-full pb-[50px]">
       
       <div className="px-0 pb-1">
-        <div className="space-y-0 bg-nexus-surface shadow-[0_10px_30px_rgba(0,0,0,0.02)]">
+        <div className="space-y-0 bg-transparent">
           {processedContacts.map((item, index) => (
             <motion.div 
               key={item.did} 
             >
               <button
-                className={`w-full flex items-center px-4 py-2 text-left cursor-pointer outline-none transition-colors bg-nexus-surface group relative`}
+                className="w-full flex items-center pl-4 py-2 text-left cursor-pointer outline-none transition-colors bg-white dark:bg-[#1C1C1E] active:bg-[#F2F2F7] dark:active:bg-[#2C2C2E] group relative border-none"
                 onClick={() => onSelectContact(item)}
               >
-                <div className="flex items-center space-x-3 flex-1 min-w-0 relative z-10">
-                   <div className="relative shrink-0">
-                     <div className={`w-[52px] h-[52px] flex items-center justify-center relative rounded-full overflow-hidden bg-nexus-bg border border-nexus-border/50`}>
+                <div className="flex items-center space-x-3 flex-1 min-w-0 relative z-10 w-full pr-4">
+                   {/* Avatar */}
+                   <div className="relative shrink-0 py-1">
+                     <div className="w-12 h-12 flex items-center justify-center relative rounded-full overflow-hidden bg-[#F2F2F7] dark:bg-[#2C2C2E]">
                        {item.avatar ? (
                          <img src={item.avatar} alt="Avatar" className="w-full h-full object-cover object-center" referrerPolicy="no-referrer" />
                        ) : (
-                         <UserPlus size={24} className="text-nexus-ink-muted opacity-50" strokeWidth={1.5} />
+                         <span className="text-[#8E8E93] font-medium text-lg">{item.name?.charAt(0) || "U"}</span>
                        )}
                      </div>
-                     {item.online && (
-                       <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-nexus-surface z-30" />
-                     )}
                    </div>
                    
-                   <div className="flex-1 min-w-0 flex flex-col justify-center py-2 border-b border-nexus-border/50 group-last:border-b-0 h-full">
-                     <div className="flex items-center justify-between leading-none mb-1">
-                        <span className={`text-[17px] font-semibold text-nexus-ink truncate flex-1 font-sans`}>
-                           {item.name || "Unknown"}
+                   <div className={`flex-1 min-w-0 flex flex-col justify-center py-3 ${index !== processedContacts.length - 1 ? 'border-b border-black/5 dark:border-white/5' : ''}`}>
+                     <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-[16px] font-medium text-black dark:text-white truncate flex-1 leading-tight">
+                           {item.name || "UID_" + item.did.slice(-4)}
                         </span>
-                        <span className="text-nexus-ink-muted text-[15px] shrink-0 ml-2">
-                          {item.timestamp}
-                        </span>
+                        <div className="flex items-center space-x-2 shrink-0 ml-2">
+                           <span className="text-[#8E8E93] text-sm font-normal">
+                             {item.timestamp}
+                           </span>
+                           <ChevronRight size={14} className="text-[#C7C7CC] dark:text-[#5A5A5E]" />
+                        </div>
                      </div>
                      
-                     <div className="flex items-center justify-between mt-0.5 leading-none">
-                        <div className="flex-1 min-w-0 flex flex-col pr-2">
-                           <div className="text-nexus-ink-muted text-[15px] truncate block font-sans">
-                             {item.lastCiphertext || "No recent messages"}
-                           </div>
+                     <div className="flex items-center justify-between mt-0.5 leading-snug">
+                        <div className="flex-1 min-w-0 flex items-center space-x-2 pr-2">
+                           {/* Truncated message preview */}
+                           <span className="text-[#8E8E93] font-normal text-[15px] truncate block opacity-90">
+                             {item.lastCiphertext || "Photo"}
+                           </span>
                         </div>
                         <AnimatePresence>
                           {item.unreadCount > 0 && (
@@ -111,7 +113,7 @@ export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigat
                               initial={{ scale: 0 }}
                               animate={{ scale: 1 }}
                               exit={{ scale: 0 }}
-                              className="bg-nexus-accent-blue text-white font-medium text-[13px] min-w-[20px] h-[20px] flex items-center justify-center rounded-full shrink-0 px-1.5 ml-2"
+                              className="bg-[#007AFF] text-white font-medium text-[12px] min-w-[20px] h-[20px] flex items-center justify-center rounded-full shrink-0 px-1.5 ml-1 leading-none"
                             >
                               {item.unreadCount > 99 ? '99+' : item.unreadCount}
                             </motion.div>
@@ -128,26 +130,23 @@ export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigat
         {processedContacts.length === 0 && (
            <div className="py-24 flex flex-col items-center justify-center text-center px-6">
               <div className="relative mb-6">
-                 <div className="w-20 h-20 rounded-full border border-nexus-border bg-nexus-surface flex items-center justify-center shadow-inner relative z-10 transition-colors">
-                    <MessageSquareOff size={32} className="text-nexus-ink-muted opacity-20" strokeWidth={1} />
+                 <div className="w-20 h-20 rounded-full bg-[#F2F2F7] dark:bg-[#2C2C2E] flex items-center justify-center">
+                    <MessageSquareOff size={32} className="text-[#8E8E93]" strokeWidth={1.5} />
                  </div>
-                 <div className="absolute inset-x-[-10px] inset-y-[-10px] border border-nexus-accent-blue/10 rounded-full animate-[ping_3s_linear_infinite] opacity-10" />
-                 <div className="absolute inset-0 border border-nexus-accent-blue/20 rounded-full animate-pulse scale-110 opacity-20" />
               </div>
               
-              <h3 className="text-[12px] font-black text-nexus-ink uppercase tracking-[4px] mb-3 font-sans">NO_CHANNELS_ACTIVE</h3>
+              <h3 className="text-[17px] font-semibold text-black dark:text-white mb-2">No Chats</h3>
               
-              <p className="text-[10px] font-medium text-nexus-ink-muted max-w-[240px] tracking-wide leading-relaxed font-sans uppercase opacity-60 mb-8">
-                 Signal swept 0 active peer channels in current sector. Initiate a scan in the node registry to establish secure bridges.
+              <p className="text-[15px] font-normal text-[#8E8E93] max-w-[240px] leading-relaxed mb-8">
+                 You have no active conversations. Discover nodes in the network to start chatting.
               </p>
 
               <button 
                 onClick={onNavigateToNodes}
-                className="group relative flex items-center space-x-3 px-6 py-3 bg-nexus-accent-blue/5 border border-nexus-accent-blue/20 rounded-[4px] hover:bg-nexus-accent-blue/10 transition-all active:scale-95 cursor-pointer overflow-hidden"
+                className="flex items-center space-x-2 px-6 py-3 bg-[#007AFF] rounded-full hover:bg-[#007AFF]/90 transition-colors active:scale-95 cursor-pointer"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                <Radar size={14} className="text-nexus-accent-blue" />
-                <span className="text-nexus-accent-blue font-black text-[9px] tracking-[3px] uppercase">DISCOVER_NODES</span>
+                <Radar size={18} className="text-white" />
+                <span className="text-white font-medium text-[15px]">Discover Nodes</span>
               </button>
            </div>
         )}
@@ -176,7 +175,7 @@ export const AddContactModal = ({ isOpen, onClose, onAdd, isAdding, addSuccess, 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md"
+          className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/40 backdrop-blur-md"
         >
           <div className="absolute inset-0" onClick={() => !isAdding && onClose()} />
           
@@ -184,64 +183,61 @@ export const AddContactModal = ({ isOpen, onClose, onAdd, isAdding, addSuccess, 
             initial={{ scale: 0.9, y: 20 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.9, y: 20 }}
-            className="w-full max-w-sm bg-nexus-surface border border-nexus-border rounded-xl shadow-2xl relative overflow-hidden"
+            className="w-full max-w-sm bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/5 rounded-xl shadow-2xl relative overflow-hidden"
           >
-            <div className="p-4 border-b border-nexus-border flex justify-between items-center bg-nexus-bg/30">
-              <div className="flex items-center space-x-2">
-                <UserPlus size={16} className="text-nexus-accent-blue" aria-hidden="true" />
-                <span className="text-[10px] font-black uppercase tracking-[3px]">Manual_Peer_Discovery</span>
-              </div>
+            <div className="p-4 flex justify-between items-center border-b border-black/5 dark:border-white/5 bg-transparent">
+              <span className="text-[15px] font-medium text-black dark:text-white">Discover Peer</span>
               {!isAdding && !addSuccess && (
-                <button onClick={onClose} className="text-nexus-ink-muted hover:text-nexus-ink transition-colors">
+                <button onClick={onClose} className="text-[#8E8E93] hover:text-black dark:hover:text-white transition-colors bg-[#F2F2F7] dark:bg-[#3A3A3C] rounded-full p-1.5 focus:outline-none">
                   <X size={16} className="rotate-45" />
                 </button>
               )}
             </div>
 
-            <div className="p-8">
+            <div className="p-6">
               {addSuccess ? (
                 <motion.div 
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   className="flex flex-col items-center py-6 space-y-4 text-center"
                 >
-                  <div className="w-16 h-16 bg-[#10B981]/10 rounded-full flex items-center justify-center">
-                    <UserCheck size={32} className="text-[#10B981]" />
+                  <div className="w-16 h-16 bg-[#34C759]/10 rounded-full flex items-center justify-center">
+                    <UserCheck size={32} className="text-[#34C759]" />
                   </div>
                   <div className="space-y-1">
-                    <h3 className="text-nexus-ink font-black text-xs uppercase tracking-[2px]">PEER_MAPPED_SUCCESSFULLY</h3>
-                    <p className="text-[9px] text-nexus-ink-muted uppercase tracking-tight">Identity shard and direct bridge established.</p>
+                    <h3 className="text-black dark:text-white font-medium text-[15px]">Peer Connected</h3>
+                    <p className="text-xs text-[#8E8E93]">Identity established successfully.</p>
                   </div>
                 </motion.div>
               ) : (
                 <form onSubmit={onAdd} className="space-y-6">
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <label htmlFor="did-input" className="text-[8px] font-bold tracking-[2px] uppercase text-nexus-ink-muted opacity-60">Identity_DID_URI</label>
+                      <label htmlFor="did-input" className="text-xs font-normal text-[#8E8E93]">Identity ID</label>
                       <div className="relative">
-                        <Fingerprint size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-nexus-ink-muted/40" />
+                        <Fingerprint size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8E93]" />
                         <input 
                           id="did-input"
                           autoFocus
                           required
                           value={did}
                           onChange={(e: any) => setDid(e.target.value)}
-                          placeholder="did:nexus:xxxx..."
-                          className="w-full bg-nexus-bg border border-nexus-border rounded-[4px] py-2.5 pl-9 pr-4 text-[11px] text-nexus-ink placeholder:text-nexus-ink-muted focus:border-nexus-accent-blue outline-none transition-colors font-mono"
+                          placeholder="ID: xxxx..."
+                          className="w-full bg-[#F2F2F7] dark:bg-[#2C2C2E] border-none rounded-[10px] py-3 pl-10 pr-4 text-[15px] text-black dark:text-white placeholder:text-[#8E8E93] focus:ring-2 focus:ring-[#007AFF] outline-none transition-all font-mono"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-1.5">
-                      <label htmlFor="alias-input" className="text-[8px] font-bold tracking-[2px] uppercase text-nexus-ink-muted opacity-60">Alias_Optional</label>
+                      <label htmlFor="alias-input" className="text-xs font-normal text-[#8E8E93]">Alias (Optional)</label>
                       <div className="relative">
-                        <Zap size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-nexus-ink-muted/40" />
+                        <Zap size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8E93]" />
                         <input 
                           id="alias-input"
                           value={alias}
                           onChange={(e: any) => setAlias(e.target.value)}
-                          placeholder="LOCAL_IDENTIFIER"
-                          className="w-full bg-nexus-bg border border-nexus-border rounded-[4px] py-2.5 pl-9 pr-4 text-[11px] text-nexus-ink placeholder:text-nexus-ink-muted focus:border-nexus-accent-blue outline-none transition-colors font-sans uppercase tracking-widest font-black"
+                          placeholder="Enter alias"
+                          className="w-full bg-[#F2F2F7] dark:bg-[#2C2C2E] border-none rounded-[10px] py-3 pl-10 pr-4 text-[15px] text-black dark:text-white placeholder:text-[#8E8E93] focus:ring-2 focus:ring-[#007AFF] outline-none transition-all"
                         />
                       </div>
                     </div>
@@ -250,15 +246,15 @@ export const AddContactModal = ({ isOpen, onClose, onAdd, isAdding, addSuccess, 
                   <button 
                     type="submit"
                     disabled={!did || isAdding}
-                    className="w-full py-3 bg-nexus-accent-blue text-white rounded-[4px] font-black text-[10px] tracking-[3px] uppercase flex items-center justify-center space-x-3 hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
+                    className="w-full py-3 bg-[#007AFF] text-white rounded-[10px] font-medium text-[15px] flex items-center justify-center space-x-2 hover:bg-[#007AFF]/90 active:bg-[#007AFF]/80 transition-colors disabled:opacity-50"
                   >
                     {isAdding ? (
                       <>
-                        <RefreshCw size={14} className="animate-spin" />
-                        <span>INITIATING_HANDSHAKE...</span>
+                        <RefreshCw size={16} className="animate-spin" />
+                        <span>Connecting...</span>
                       </>
                     ) : (
-                      <span>DISCOVER_PEER</span>
+                      <span>Discover</span>
                     )}
                   </button>
                 </form>

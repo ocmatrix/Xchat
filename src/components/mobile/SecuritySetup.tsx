@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Fingerprint, Key, ChevronRight, RefreshCcw, Lock, Box, Cpu, QrCode, ArrowLeft, Terminal } from 'lucide-react';
+import LogoIcon from '../LogoIcon';
 
 interface SecuritySetupProps {
   onComplete: (did: string) => void;
@@ -46,10 +47,7 @@ export const SecuritySetup: React.FC<SecuritySetupProps> = ({ onComplete }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-nexus-bg text-nexus-ink font-sans p-6 overflow-hidden relative">
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
-           style={{ backgroundImage: 'radial-gradient(var(--nexus-ink) 1px, transparent 0)', backgroundSize: '24px 24px' }} />
-
+    <div className="flex flex-col h-full bg-white dark:bg-[#000000] text-black dark:text-white font-sans p-6 overflow-hidden relative">
       <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full relative z-10">
         
         <AnimatePresence mode="wait">
@@ -63,52 +61,51 @@ export const SecuritySetup: React.FC<SecuritySetupProps> = ({ onComplete }) => {
               exit={{ opacity: 0, scale: 0.95 }}
               className="space-y-6"
             >
-              <div className="space-y-4">
-                <div className="w-14 h-14 bg-nexus-accent-blue/10 rounded-2xl flex items-center justify-center border border-nexus-accent-blue/20">
-                  <Shield size={28} className="text-nexus-accent-blue" aria-hidden="true" />
+              <div className="flex flex-col items-center text-center space-y-4 mb-4">
+                <div className="w-16 h-16 bg-[#007AFF]/10 rounded-2xl flex items-center justify-center">
+                  <LogoIcon className="text-[#007AFF] text-4xl" aria-hidden="true" />
                 </div>
-                <h1 className="text-3xl font-black tracking-tighter uppercase leading-tight">
-                  Mesh_Entry_<br />
-                  <span className="text-nexus-accent-blue">Initialize.</span>
+                <h1 className="text-[28px] font-semibold leading-tight tracking-tight">
+                  Welcome
                 </h1>
+                <p className="text-[#8E8E93] text-[15px] font-normal leading-relaxed px-4">
+                  Set up your identity or sync an existing device to continue.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 gap-3">
                 <button 
                   onClick={generateIdentity}
                   aria-label="Generate a new cryptographic identity"
-                  className="group w-full p-4 bg-nexus-ink text-nexus-bg rounded-lg flex flex-col items-start transition-all active:scale-[0.98] shadow-xl focus:outline-none focus:ring-2 focus:ring-nexus-accent-blue"
+                  className="w-full p-4 bg-[#007AFF] text-white rounded-xl flex flex-col items-center justify-center transition-colors active:bg-[#007AFF]/80 focus:outline-none"
                 >
-                   <div className="flex items-center space-x-2 mb-1">
-                      <Cpu size={14} aria-hidden="true" />
-                      <span className="text-[10px] font-black uppercase tracking-[3px]">New_Identity</span>
-                   </div>
-                   <p className="text-[9px] opacity-60 text-left">Generate local ED25519 cryptographic shards.</p>
+                   <span className="text-[17px] font-semibold mb-1">Create New Identity</span>
+                   <p className="text-[13px] opacity-80 text-center font-normal">Generate local encryption keys.</p>
                 </button>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 mt-2">
                   <button 
                     onClick={() => setStep('SYNC_SCAN')}
                     aria-label="Sync identity from another device via QR"
-                    className="p-4 bg-nexus-surface border border-nexus-border rounded-lg flex flex-col items-start hover:bg-nexus-ink/5 transition-all active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-nexus-accent-blue"
+                    className="p-4 bg-[#F2F2F7] dark:bg-[#1C1C1E] border border-black/5 dark:border-white/5 rounded-xl flex flex-col items-center justify-center hover:bg-[#E5E5EA] dark:hover:bg-[#2C2C2E] transition-colors active:scale-[0.98] focus:outline-none"
                   >
-                    <QrCode size={16} className="mb-2 text-nexus-accent-blue" aria-hidden="true" />
-                    <span className="text-[9px] font-black uppercase tracking-[1px]">Sync_QR</span>
+                    <div className="w-10 h-10 rounded-full bg-[#007AFF]/10 flex items-center justify-center mb-3">
+                      <QrCode size={20} className="text-[#007AFF]" aria-hidden="true" />
+                    </div>
+                    <span className="text-[15px] font-medium">Sync QR</span>
                   </button>
                   <button 
                     onClick={() => setStep('RECOVER')}
                     aria-label="Recover identity using a backup seed"
-                    className="p-4 bg-nexus-surface border border-nexus-border rounded-lg flex flex-col items-start hover:bg-nexus-ink/5 transition-all active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-nexus-accent-blue"
+                    className="p-4 bg-[#F2F2F7] dark:bg-[#1C1C1E] border border-black/5 dark:border-white/5 rounded-xl flex flex-col items-center justify-center hover:bg-[#E5E5EA] dark:hover:bg-[#2C2C2E] transition-colors active:scale-[0.98] focus:outline-none"
                   >
-                    <Key size={16} className="mb-2 text-nexus-accent-gold" aria-hidden="true" />
-                    <span className="text-[9px] font-black uppercase tracking-[1px]">Manual_Seed</span>
+                    <div className="w-10 h-10 rounded-full bg-[#FF9500]/10 flex items-center justify-center mb-3">
+                      <Key size={20} className="text-[#FF9500]" aria-hidden="true" />
+                    </div>
+                    <span className="text-[15px] font-medium">Seed Phrase</span>
                   </button>
                 </div>
               </div>
-
-              <p className="text-[10px] text-nexus-ink-muted text-center opacity-40 uppercase tracking-widest pt-4">
-                Non-Custodial Protocol v4.2
-              </p>
             </motion.div>
           )}
 
@@ -125,33 +122,30 @@ export const SecuritySetup: React.FC<SecuritySetupProps> = ({ onComplete }) => {
                <button 
                 onClick={() => setStep('INTRO')} 
                 aria-label="Return to initial selection"
-                className="flex items-center space-x-2 text-nexus-ink-muted hover:text-nexus-ink transition-colors focus:outline-none focus:text-nexus-accent-blue"
+                className="flex items-center space-x-1 text-[#007AFF] hover:opacity-80 transition-opacity focus:outline-none -ml-2"
                >
-                  <ArrowLeft size={16} aria-hidden="true" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Back</span>
+                  <ArrowLeft size={20} aria-hidden="true" />
+                  <span className="text-[17px] font-normal">Back</span>
                </button>
 
                <div className="space-y-4">
-                  <h2 className="text-2xl font-black tracking-tight uppercase">Import_Sovereignty</h2>
-                  <p className="text-[11px] text-nexus-ink-muted">Enter your Entropic Seed phrase to reconstruct your identity shards on this terminal.</p>
+                  <h2 className="text-[28px] font-semibold tracking-tight">Recovery</h2>
+                  <p className="text-[15px] text-[#8E8E93] leading-relaxed">Enter your recovery phrase to reconstruct your identity on this device.</p>
                   
-                  <div className="space-y-2">
-                    <div className="relative">
-                      <Terminal size={12} className="absolute top-3 left-3 text-nexus-ink-muted/40" aria-hidden="true" />
-                      <textarea 
-                        aria-label="Entropic Seed backup shard"
-                        value={inputSeed}
-                        onChange={(e) => setInputSeed(e.target.value.toUpperCase())}
-                        placeholder="XXXX-XXXX-XXXX-XXXX"
-                        className="w-full bg-nexus-surface border border-nexus-border rounded-lg p-3 pl-9 text-[14px] font-mono tracking-[4px] text-nexus-accent-gold uppercase focus:border-nexus-accent-gold/40 outline-none h-24 resize-none"
-                      />
-                    </div>
+                  <div className="space-y-4 pt-2">
+                    <textarea 
+                      aria-label="Recovery phrase"
+                      value={inputSeed}
+                      onChange={(e) => setInputSeed(e.target.value.toUpperCase())}
+                      placeholder="Enter 12 or 24 words..."
+                      className="w-full bg-[#F2F2F7] dark:bg-[#1C1C1E] border-none rounded-xl p-4 text-[17px] text-black dark:text-white placeholder:text-[#8E8E93] focus:ring-2 focus:ring-[#007AFF] outline-none h-32 resize-none"
+                    />
                     <button 
                       disabled={!inputSeed}
                       onClick={handleRecover}
-                      className="w-full py-4 bg-nexus-accent-gold text-black font-black text-xs tracking-[4px] uppercase rounded-sm disabled:opacity-30 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-nexus-accent-gold"
+                      className="w-full py-3.5 bg-[#007AFF] text-white font-semibold text-[17px] rounded-xl disabled:opacity-50 transition-colors active:bg-[#007AFF]/80 focus:outline-none"
                     >
-                      Authenticate_Shards
+                      Recover Identity
                     </button>
                   </div>
                </div>
@@ -168,26 +162,28 @@ export const SecuritySetup: React.FC<SecuritySetupProps> = ({ onComplete }) => {
                exit={{ opacity: 0, y: -20 }}
                className="space-y-6 text-center"
             >
+               <div className="flex justify-start">
+                 <button 
+                  onClick={() => setStep('INTRO')} 
+                  className="flex items-center space-x-1 text-[#007AFF] hover:opacity-80 transition-opacity focus:outline-none -ml-2"
+                 >
+                    <ArrowLeft size={20} aria-hidden="true" />
+                    <span className="text-[17px] font-normal">Back</span>
+                 </button>
+               </div>
+
                <div className="space-y-4">
-                  <h2 className="text-xl font-black tracking-tight uppercase">Optical_Handshake</h2>
-                  <p className="text-[11px] text-nexus-ink-muted">Align this terminal with the Authorization QR on your established device.</p>
+                  <h2 className="text-[28px] font-semibold tracking-tight">Scan QR</h2>
+                  <p className="text-[15px] text-[#8E8E93] leading-relaxed max-w-xs mx-auto">Align this device with the Authorization QR on your established device.</p>
                   
                   <button 
                     onClick={simulateSync}
                     aria-label="Simulate scanning authorization QR code"
-                    className="aspect-square w-full max-w-[200px] mx-auto bg-nexus-surface border border-nexus-border rounded-2xl flex flex-col items-center justify-center relative group cursor-pointer overflow-hidden focus:outline-none focus:border-nexus-accent-blue"
+                    className="aspect-square w-full max-w-[240px] mx-auto mt-8 bg-[#F2F2F7] dark:bg-[#1C1C1E] rounded-[24px] flex flex-col items-center justify-center relative overflow-hidden focus:outline-none active:scale-[0.98] transition-transform"
                   >
-                     <div className="absolute inset-0 bg-nexus-accent-blue/5 group-hover:bg-nexus-accent-blue/10 transition-colors" />
-                     <div className="w-full h-0.5 bg-nexus-accent-blue absolute top-0 animate-[scan_2s_infinite]" />
-                     <QrCode size={48} className="text-nexus-ink-muted group-hover:text-nexus-accent-blue transition-colors relative z-10" aria-hidden="true" />
-                     <span className="mt-4 text-[8px] font-black tracking-widest text-nexus-accent-blue uppercase opacity-0 group-hover:opacity-100 transition-opacity">Detecting_Bridge...</span>
-                  </button>
-
-                  <button 
-                    onClick={() => setStep('INTRO')} 
-                    className="text-[10px] font-bold text-nexus-ink-muted uppercase tracking-[2px] mt-4 focus:outline-none focus:text-nexus-ink"
-                  >
-                    Cancel_Relay
+                     <div className="w-full h-0.5 bg-[#34C759] absolute top-0 shadow-[0_0_8px_rgba(52,199,89,0.8)] animate-[scan_2s_infinite]" />
+                     <QrCode size={64} className="text-[#8E8E93] mb-4" aria-hidden="true" />
+                     <span className="text-[15px] font-medium text-[#007AFF]">Tap to Simulate Scan</span>
                   </button>
                </div>
             </motion.div>
@@ -201,28 +197,12 @@ export const SecuritySetup: React.FC<SecuritySetupProps> = ({ onComplete }) => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center space-y-8 text-center"
+              className="flex flex-col items-center justify-center space-y-6 text-center py-12"
             >
-              <div className="relative">
-                <motion.div 
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                  className="w-32 h-32 border-2 border-dashed border-nexus-accent-blue/30 rounded-full"
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <RefreshCcw size={32} className="text-nexus-accent-blue animate-spin" aria-hidden="true" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-xs font-black tracking-[5px] uppercase text-nexus-ink">
-                  {step === 'GENERATING' ? 'Reconstructing_Metadata' : 'Synchronizing_States'}
-                </h2>
-                <div className="flex items-center space-x-2 justify-center">
-                   <div className="w-1 h-1 bg-nexus-accent-blue animate-bounce" />
-                   <div className="w-1 h-1 bg-nexus-accent-blue animate-bounce [animation-delay:0.2s]" />
-                   <div className="w-1 h-1 bg-nexus-accent-blue animate-bounce [animation-delay:0.4s]" />
-                </div>
-              </div>
+              <RefreshCcw size={40} className="text-[#007AFF] animate-spin" aria-hidden="true" />
+              <h2 className="text-[17px] font-semibold text-black dark:text-white">
+                {step === 'GENERATING' ? 'Securing Identity...' : 'Syncing Data...'}
+              </h2>
             </motion.div>
           )}
 
@@ -233,57 +213,55 @@ export const SecuritySetup: React.FC<SecuritySetupProps> = ({ onComplete }) => {
               aria-label="Identity Finalization"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="space-y-6"
+              className="space-y-8"
             >
-              <div className="text-center space-y-2 mb-8">
-                <div className="inline-flex items-center space-x-2 px-3 py-1 bg-[#22C55E]/10 border border-[#22C55E]/20 text-[#22C55E] rounded-full">
-                  <Lock size={12} aria-hidden="true" />
-                  <span className="text-[9px] font-black tracking-widest uppercase">Identity_Sovereignty_Confirmed</span>
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="w-16 h-16 bg-[#34C759]/10 rounded-full flex items-center justify-center">
+                  <Lock size={32} className="text-[#34C759]" aria-hidden="true" />
                 </div>
-                <h2 className="text-2xl font-black tracking-tight uppercase">Terminal_Activated</h2>
+                <h2 className="text-[28px] font-semibold tracking-tight">Activated</h2>
+                <p className="text-[15px] text-[#8E8E93] leading-relaxed">Your device is successfully linked.</p>
               </div>
 
               <div className="space-y-4">
-                <div className="p-4 bg-nexus-surface border border-nexus-border rounded-lg space-y-3 shadow-inner">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black tracking-widest text-nexus-ink-muted uppercase">Public_DID</span>
-                    <Box size={12} className="text-nexus-ink-muted/40" aria-hidden="true" />
+                <div className="bg-[#F2F2F7] dark:bg-[#1C1C1E] rounded-xl p-4 space-y-2">
+                  <div className="flex items-center text-[#8E8E93]">
+                    <span className="text-[13px] font-medium uppercase tracking-wider">Device ID</span>
                   </div>
                   <div 
                     role="textbox"
                     aria-readonly="true"
                     aria-label="Generated Public DID"
-                    className="bg-nexus-bg p-3 rounded border border-nexus-border font-mono text-[10px] break-all text-nexus-accent-blue leading-relaxed"
+                    className="font-mono text-[13px] break-all text-black dark:text-white leading-relaxed"
                   >
                     {generatedDid}
                   </div>
                 </div>
 
                 {generatedSeed && (
-                  <div className="p-4 bg-nexus-surface border border-nexus-border rounded-lg space-y-3 shadow-inner">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-black tracking-widest text-nexus-accent-gold uppercase">Backup_Seed_Shard</span>
-                      <Shield size={12} className="text-nexus-accent-gold/40" aria-hidden="true" />
+                  <div className="bg-[#F2F2F7] dark:bg-[#1C1C1E] rounded-xl p-4 space-y-3 border border-[#FF9500]/20">
+                    <div className="flex items-center justify-between text-[#8E8E93]">
+                      <span className="text-[13px] font-medium uppercase tracking-wider text-[#FF9500]">Recovery Phrase</span>
+                      <Shield size={16} className="text-[#FF9500]" aria-hidden="true" />
                     </div>
-                    <div className="bg-nexus-bg p-3 rounded border border-nexus-border flex flex-col space-y-2">
-                       <div className="flex items-center justify-between">
-                          <p className="text-[9px] text-nexus-ink-muted uppercase tracking-wider font-bold">Entropic_Seed</p>
+                    <div className="flex flex-col space-y-3">
+                       <p className="font-mono text-[17px] text-[#FF9500] text-center select-all py-3 bg-[#FF9500]/5 rounded-lg border border-[#FF9500]/10">
+                         {generatedSeed}
+                       </p>
+                       <div className="flex items-center justify-between mt-1">
+                          <p className="text-[13px] text-[#8E8E93] leading-relaxed">
+                            Save offline. Your only recovery method.
+                          </p>
                           <button 
                             onClick={() => {
                               navigator.clipboard.writeText(generatedSeed);
-                              alert("Seed Shard copied to local clipboard.");
+                              alert("Recovery phrase copied");
                             }}
-                            className="text-[8px] font-black underline uppercase text-nexus-accent-gold tracking-widest"
+                            className="text-[15px] font-medium text-[#007AFF] hover:underline"
                           >
                             Copy
                           </button>
                        </div>
-                       <p className="font-mono text-[14px] text-nexus-accent-gold tracking-[3px] text-center select-all py-1 border-y border-dashed border-nexus-accent-gold/20">
-                         {generatedSeed}
-                       </p>
-                       <p className="text-[8px] text-center text-nexus-ink-muted leading-relaxed uppercase opacity-60">
-                         Write this down offline. This is your ONLY recovery vector.
-                       </p>
                     </div>
                   </div>
                 )}
@@ -291,19 +269,13 @@ export const SecuritySetup: React.FC<SecuritySetupProps> = ({ onComplete }) => {
 
               <button 
                 onClick={() => onComplete(generatedDid)}
-                className="w-full py-4 bg-nexus-accent-blue text-white font-black text-xs tracking-[4px] uppercase rounded-sm flex items-center justify-center space-x-2 active:scale-95 transition-all shadow-xl focus:outline-none focus:ring-2 focus:ring-nexus-accent-blue"
+                className="w-full py-3.5 bg-[#007AFF] text-white font-semibold text-[17px] rounded-xl flex items-center justify-center space-x-2 active:bg-[#007AFF]/80 transition-colors focus:outline-none"
               >
-                <span>Initialize Mesh Session</span>
-                <ChevronRight size={14} aria-hidden="true" />
+                <span>Continue</span>
               </button>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-
-      <div className="mt-auto pt-6 border-t border-nexus-border/40 flex justify-between items-center opacity-40">
-        <span className="text-[10px] font-black tracking-[4px]">DOTCOM v4.2</span>
-        <span className="text-[8px] font-mono">NON_CUSTODIAL_CORE</span>
       </div>
       
       <style>{`
