@@ -307,7 +307,7 @@ export default function App() {
         </AnimatePresence>
 
         {/* Screen Content - Reclaimed Space */}
-        <div className={`flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col transition-colors duration-500 ${!isConversationOpen ? (currentView === 'CHAT' ? (isSearchExpanded ? 'pt-[108px]' : 'pt-[72px]') : 'pt-[36px]') : 'pt-0'}`}>
+        <div className={`flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col transition-colors duration-500 pt-0`}>
           {!isInitialized ? (
             <SecuritySetup onComplete={handleSetupComplete} />
           ) : (
@@ -319,7 +319,7 @@ export default function App() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="w-full flex-col flex shrink-0 min-h-max"
+                    className={`w-full flex-col flex shrink-0 min-h-max ${!isConversationOpen ? (currentView === 'CHAT' ? (isSearchExpanded ? 'pt-[108px]' : 'pt-[72px]') : 'pt-[36px]') : 'pt-0'}`}
                   >
                     {currentView === 'CHAT' && (
                       <ChatList 
