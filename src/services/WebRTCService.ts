@@ -6,7 +6,7 @@ export class WebRTCService {
   private peerConnection: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
   private convId: string;
-  private aesKey: string = 'YOUR_DYNAMIC_AES_KEY'; // Should be set via constructor or method
+  private aesKey: string;
   
   // 核心修复 2：ICE 缓冲队列
   private pendingIceCandidates: RTCIceCandidateInit[] = [];
@@ -15,8 +15,9 @@ export class WebRTCService {
   private onMessageCallback: ((msg: string) => void) | null = null;
   private onConnectionStateChange: ((info: { state: RTCPeerConnectionState, message: string, health: 'green' | 'yellow' | 'red' }) => void) | null = null;
 
-  constructor(convId: string) {
+  constructor(convId: string, aesKey: string) {
     this.convId = convId;
+    this.aesKey = aesKey;
   }
 
   // 补齐 P2P 文本消息发送接口

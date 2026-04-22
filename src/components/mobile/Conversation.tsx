@@ -269,14 +269,16 @@ const MemoizedMessageBubble = React.memo(({ item, idx, arr, burningCountdown, se
   );
 });
 
-export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsolated = false, targetName = "SECURE CHANNEL", convId, myDid }: { 
+export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsolated = false, targetName = "SECURE CHANNEL", convId, myDid, aesKey, isInitiator }: { 
   onLightningCall: (mode: 'voice' | 'video') => void, 
   onBack: () => void, 
   isGroup?: boolean, 
   isIsolated?: boolean, 
   targetName?: string,
   convId?: string,
-  myDid: string | null
+  myDid: string | null,
+  aesKey?: string,
+  isInitiator?: boolean
 }) => {
   const [showGroupPanel, setShowGroupPanel] = useState(false);
   const [showPrivateChatSettings, setShowPrivateChatSettings] = useState(false);
@@ -295,8 +297,28 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
   const [videoCallState, setVideoCallState] = useState<'idle' | 'calling' | 'receiving' | 'connected'>('idle');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const webrtcService = useMemo(() => (convId && myDid) ? new WebRTCService(convId, myDid) : null, [convId, myDid]);
+  
+  // 🟢 使用传入的 aesKey 初始化
+  const webrtcService = useMemo(() => (convId && aesKey) ? new WebRTCService(convId, aesKey) : null, [convId, aesKey]);
+  
   const processedSignals = useRef<Set<string>>(new Set());
+
+  // 🟢 新增：无感静默打洞机制 (Background Hole Punching)
+  useEffect(() => {
+    if (webrtcService && isInitiator) {
+      console.log("[NEXUS] 扫描端作为 Initiator，正在后台静默打洞...");
+      webrtcService.setCallbacks(
+        (msg) => {
+          setLocalMessages(prev => [...prev, {
+             id: `p2p-${Date.now()}`, senderId: 'them', content: msg, sender: 'them', isMe: false
+          }]);
+        },
+        (info) => { console.log("[NEXUS] Tunnel Status:", info.message); }
+      );
+      // 静默发起握手
+      webrtcService.createOffer();
+    }
+  }, [webrtcService, isInitiator]);
 
   const handleP2PSend = () => {
     if (!inputText.trim() || !webrtcService || !myDid) return;
@@ -928,7 +950,7 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
              placeholder={isListening ? "Listening..." : "Message"}
              value={inputText}
              onChange={(e) => setInputText(e.target.value)}
-             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+             onKeyDown={(e) => e.key === 'Enter' && handleP2PSend()}
            />
            
            <div className="flex items-center space-x-1 pl-1">
@@ -955,7 +977,7 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
              </button>
 
              <button
-               onClick={handleSend}
+               onClick={handleP2PSend}
                disabled={!inputText.trim()}
                className={`w-9 h-9 flex items-center justify-center transition-transform duration-300 rounded-full cursor-pointer border-none ${
                  inputText.trim() 

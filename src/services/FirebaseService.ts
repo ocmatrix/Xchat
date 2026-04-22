@@ -140,6 +140,24 @@ export const FirebaseService = {
     }, (e) => handleFirestoreError(e, 'list', `conversations/${convId}/messages`));
   },
 
+  async saveContact(contactData: { did: string, sharedKey: string, convId: string, addedAt: number }) {
+    const myDid = localStorage.getItem('NXS_IDENTITY_DID');
+    if (!myDid) {
+      console.error("🚫 CONTACT_SAVE_FAILED::IDENTITY_NOT_FOUND");
+      throw new Error("IDENTITY_NOT_FOUND: Please finish identity setup before adding contacts.");
+    }
+
+    try {
+      await setDoc(doc(db, 'users', myDid, 'contacts', contactData.did), {
+        ...contactData,
+        name: "NOMAD_" + contactData.did.slice(-4).toUpperCase() // Default name
+      });
+      console.log(`✅ CONTACT_SAVED::DID=${contactData.did}`);
+    } catch (e) {
+      handleFirestoreError(e, 'write', `users/${myDid}/contacts/${contactData.did}`);
+    }
+  },
+
   // Invites
   async createInvite(groupId: string, ttlHours: number = 72) {
     const code = Math.random().toString(36).substring(2, 10).toUpperCase();

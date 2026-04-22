@@ -231,32 +231,22 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // Row 2: Distributed Node Discovery
+  // Row 2: Distributed Node Discovery - Listen only to MY contacts
   useEffect(() => {
-    if (!currentUser) {
-      if (isInitialized) {
-        // Isolated Mode: Provide system nodes for UI exploration
-        setActiveNodes([
-          { did: 'did:nexus:node:gateway', name: 'NEXUS_GATEWAY_V1', status: 'online', avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=gateway&backgroundColor=0047AB' },
-          { did: 'did:nexus:node:relay-01', name: 'DEEP_SEA_RELAY', status: 'busy', avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=relay&backgroundColor=008299' }
-        ]);
-        setDataReady(true);
-      }
-      return;
-    }
-    const q = query(collection(db, 'users'), limit(50));
+    if (!currentUser) return;
+    
+    // Query my own contacts collection
+    const q = query(collection(db, 'users', currentUser.uid, 'contacts'));
     const unsub = onSnapshot(q, (snapshot) => {
-      const nodes = snapshot.docs
-        .filter(d => d.id !== currentUser.uid)
-        .map(d => ({
-          ...d.data(),
-          id: d.id,
-          isGroup: false,
-          online: d.data().status === 'online',
-          lastCiphertext: 'Established: Secure Link',
-          timestamp: 'NOW'
-        }));
-      setActiveNodes(nodes);
+      const contacts = snapshot.docs.map(d => ({
+        ...d.data(),
+        id: d.id, // DID
+        isGroup: false,
+        online: true, 
+        lastCiphertext: 'Secure Link Established',
+        timestamp: d.data().addedAt ? new Date(d.data().addedAt).toLocaleTimeString() : 'NOW'
+      }));
+      setActiveNodes(contacts);
       setDataReady(true);
     });
     return () => unsub();
@@ -274,15 +264,11 @@ export default function App() {
 
   const handleSelectContact = async (contact: any) => {
     setIsConversationOpen(true);
-    let convId = contact.id;
     
-    // For direct chats, if id is just the UID, we need to find/create the conversation doc
-    if (!contact.isGroup) {
-      const resolvedId = await FirebaseService.getOrCreateDirectConversation(contact.did);
-      convId = resolvedId;
-    }
-    
-    setActiveContact({ ...contact, convId });
+    setActiveContact({ 
+      ...contact,
+      isInitiator: true 
+    });
   };
 
   const handleBack = () => {

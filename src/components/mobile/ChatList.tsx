@@ -70,7 +70,11 @@ const ContactListItem = React.memo(({ item, index, isLast, onSelectContact }: an
   );
 });
 
-export const ChatList = ({ contacts, dataReady, onSelectContact, onLightningCall, onNavigateToNodes, searchQuery: externalSearchQuery }: any) => {
+import { NexusContactService } from '../../services/NexusContactService';
+
+// ...
+
+export const ChatList = ({ onSelectContact, onLightningCall, onNavigateToNodes, searchQuery: externalSearchQuery }: any) => {
   const [sortBy, setSortBy] = useState<SortCriteria>('timestamp');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newContactDID, setNewContactDID] = useState("");
@@ -79,33 +83,54 @@ export const ChatList = ({ contacts, dataReady, onSelectContact, onLightningCall
   const [addSuccess, setAddSuccess] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);
 
-  const handleAddContact = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newContactDID) return;
+  const [contacts, setContacts] = useState<any[]>([]);
 
-    setIsAdding(true);
-    // Simulate P2P discovery and DHT mapping
-    await new Promise(r => setTimeout(r, 1500));
-    setIsAdding(false);
-    setAddSuccess(true);
-    
-    // In a real app, this would dispatch to a global state/db
-    console.log("PEER_MAPPED::", { did: newContactDID, alias: newContactAlias });
-    
-    setTimeout(() => {
-      setAddSuccess(false);
-      setShowAddModal(false);
-      setNewContactDID("");
-      setNewContactAlias("");
-    }, 1800);
+  const loadContacts = () => {
+    setContacts(NexusContactService.getLocalContacts());
   };
 
-  const processedContacts = useMemo(() => {
+  useEffect(() => {
+    loadContacts();
+    window.addEventListener('nexus_contacts_updated', loadContacts);
+    return () => window.removeEventListener('nexus_contacts_updated', loadContacts);
+  }, []);
+
+   const handleAddContact = async (e: React.FormEvent) => {                
+    e.preventDefault();                
+    if (!newContactDID) return;                
+ 
+    setIsAdding(true);                
+    // Simulate P2P discovery 
+    await new Promise(r => setTimeout(r, 1500)); 
+ 
+    // New local save logic
+    const myDid = auth.currentUser?.uid || 'LOCAL_NODE';                
+    const sortedDids = [myDid, newContactDID].sort();                
+    const deterministicConvId = `p2p_${sortedDids[0]}_${sortedDids[1]}`;                
+ 
+    NexusContactService.saveContactLocally({                
+        did: newContactDID,                
+        sharedKey: Math.random().toString(36).substring(2), // Dummy key                
+        convId: deterministicConvId                
+    });                
+ 
+    setIsAdding(false);                
+    setAddSuccess(true);                
+    
+    setTimeout(() => {                
+      setAddSuccess(false);                
+      setShowAddModal(false);                
+      setNewContactDID("");                
+      setNewContactAlias("");                
+    }, 1800);                
+  };                
+ 
+  const processedContacts = useMemo(() => {                
     let result = contacts.filter((c: any) => 
       c.name.toLowerCase().includes(externalSearchQuery.toLowerCase()) || 
       c.did.toLowerCase().includes(externalSearchQuery.toLowerCase())
     );
-
+ 
     // Sorting logic
     result.sort((a: any, b: any) => {
       if (sortBy === 'name') {
@@ -119,13 +144,10 @@ export const ChatList = ({ contacts, dataReady, onSelectContact, onLightningCall
         return b.timestamp.localeCompare(a.timestamp);
       }
       return 0;
-    });
-
-    return result;
+    });                
+ 
+    return result;                
   }, [contacts, externalSearchQuery, sortBy]);
-
-  const virtualizer = useVirtualizer({
-    count: processedContacts.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 68,
     overscan: 5,

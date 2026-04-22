@@ -5,6 +5,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { NexusCompressionService, CompressedEnvelope } from '../../services/NexusCompressionService';
 import { NexusSecurityService } from '../../services/NexusSecurityService';
 import { FirebaseService } from '../../services/FirebaseService';
+import { NexusContactService } from '../../services/NexusContactService';
 
 interface PeerDiscoveryProps {
   onClose: () => void;
@@ -27,6 +28,13 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
   // Generate a cryptographically strong symmetric key (AES-GCM 256)
   const generateEncryptionKey = async () => {
     try {
+      // 🔧 修复 A：兼容 HTTP 局域网下的密码学降级 (Safari 会阉割非 HTTPS 的 crypto)
+      if (!window.crypto || !window.crypto.subtle) {
+         console.warn("⚠️ 非 HTTPS 局域网环境，Web Crypto API 被拦截，启用随机数降级...");
+         setEncryptionKey(btoa(Math.random().toString(36).substring(2) + Date.now().toString()));
+         return;
+      }
+
       const key = await window.crypto.subtle.generateKey(
         { name: "AES-GCM", length: 256 },
         true,
@@ -163,36 +171,27 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
               setIsConnecting(true);
               
               try {
-                // 1. Establish the Mesh Transport Channel
-                console.log("🛰️ MESH::INITIATING_TRANSPORT_LINK...");
-                const convId = await FirebaseService.getOrCreateDirectConversation(pendingConnection.did);
+                console.log("📝 SOVEREIGN_ENCLAVE::STORING_NODE_LOCALLY...");
                 
-                if (convId) {
-                  // 2. Transmit the Cryptographic Handshake Signal
-                  // This establishes the E2EE parameters in the shared signaling channel
-                  await FirebaseService.sendMessage(convId, {
-                    content: JSON.stringify({
-                      type: 'handshake-request',
-                      initiator: pendingConnection.initiatorDid,
-                      sessionKey: pendingConnection.key,
-                      protocol: 'SOVEREIGN_V3'
-                    }),
-                    protocol: 'NXS-HANDSHAKE-SIG',
-                    nonce: crypto.randomUUID().slice(0, 8),
-                    type: 'signal'
-                  });
-                  
-                  console.log("✅ HANDSHAKE_SIGNAL_EMITTED::CONV=" + convId);
-                  onConnected(pendingConnection.did, pendingConnection.key);
-                }
-              } catch (err) {
-                console.error("🚫 HANDSHAKE_PROTOCOL_FAILURE:", err);
-                // Instead of only setting cameraError, show a clear alert or set state
-                // that HandshakeConfirmation can display.
-                setCameraError("SIGNALING TIMEOUT: P2P Link establishment failed.");
+                // 生成一个基于双方 DID 的确定性房间号，不依赖云端分配
+                const sortedDids = [pendingConnection.initiatorDid || "LOCAL_NODE", pendingConnection.did].sort();
+                const deterministicConvId = `p2p_${sortedDids[0]}_${sortedDids[1]}`;
+                
+                // 🟢 关键：只保存在手机本地！
+                NexusContactService.saveContactLocally({
+                    did: pendingConnection.did,
+                    sharedKey: pendingConnection.key,
+                    convId: deterministicConvId
+                });
+
+                console.log("✅ 节点密钥已安全存入本地硬件隔离区");
+                
+                setPendingConnection(null);
+                onClose(); // 退回首页
+              } catch (err: any) {
+                console.error("🚫 硬件存储失败:", err);
+                setCameraError("安全存储区写入失败");
               } finally {
-                // Remove setPendingConnection(null) from finally to keep the modal open on error,
-                // allowing the user to read the error and abort manually. 
                 setIsConnecting(false);
               }
             }}
@@ -433,7 +432,7 @@ const HandshakeConfirmation = ({ did, initiatorDid, encryptionKey, stats, isConn
         </div>
         
         <h3 className="text-nexus-ink font-display text-lg font-bold tracking-tight mb-6 uppercase text-center leading-none">
-          Handshake_Finalization
+          Add_Friend
           <span className="block text-[8px] text-nexus-accent-blue mt-2 tracking-[4px]">Sovereign_Protocol_V3</span>
         </h3>
         
@@ -448,7 +447,7 @@ const HandshakeConfirmation = ({ did, initiatorDid, encryptionKey, stats, isConn
                  <div className="absolute inset-x-0 h-[1px] bg-nexus-border" />
                  <div className="bg-nexus-surface px-3 py-1 border border-nexus-border rounded-full z-10 flex items-center space-x-2">
                     <RefreshCw size={8} className="text-nexus-accent-blue animate-spin-slow" />
-                    <span className="text-[6px] text-nexus-ink-muted uppercase tracking-[2px]">Linking</span>
+                    <span className="text-[6px] text-nexus-ink-muted uppercase tracking-[2px]">Syncing</span>
                  </div>
               </div>
 
@@ -470,7 +469,7 @@ const HandshakeConfirmation = ({ did, initiatorDid, encryptionKey, stats, isConn
              <div className="flex items-center justify-between bg-white/5 p-3 border border-white/5 rounded-sm">
                 <div className="flex items-center space-x-3">
                    <BarChart3 size={10} className="text-nexus-ink-muted" />
-                   <span className="text-nexus-ink-muted text-[6px] uppercase tracking-[2px] font-black">Handshake_Payload</span>
+                   <span className="text-nexus-ink-muted text-[6px] uppercase tracking-[2px] font-black">Sync_Payload</span>
                 </div>
                 <div className="flex flex-col items-end">
                    <span className="text-nexus-accent-blue text-[9px] font-black">-{reduction}% SIZE</span>
@@ -480,7 +479,7 @@ const HandshakeConfirmation = ({ did, initiatorDid, encryptionKey, stats, isConn
         </div>
         
         <p className="text-nexus-ink/20 text-[7px] leading-relaxed mb-8 font-mono uppercase tracking-[2px] text-center px-2">
-          By authorizing, you establish a direct sovereign link. Keys are stored in the local hardware enclave.
+          By adding this peer, you establish a direct sovereign link. Keys are stored in the local hardware enclave.
         </p>
         
         <div className="w-full space-y-3">
@@ -492,18 +491,21 @@ const HandshakeConfirmation = ({ did, initiatorDid, encryptionKey, stats, isConn
             {isConnecting ? (
                <div className="flex items-center space-x-2">
                  <Loader2 size={16} className="animate-spin" />
-                 <span>[ PROCESSING_SIGNAL... ]</span>
+                 <span>[ PROCESSING_IDENTITY... ]</span>
                </div>
             ) : (
-              "AUTHORIZE_CONNECTION"
+              "ADD_FRIEND"
             )}
           </button>
+          
+          {/* Handshake Error Display */}
+          {/* Note: Simplified approach - assume cameraError serves as generic error feedback from PeerDiscovery */}
           
           <button 
             onClick={onCancel}
             className="w-full h-12 bg-transparent border border-nexus-border text-nexus-ink-muted opacity-40 font-bold text-[8px] tracking-[2px] uppercase hover:bg-white/5 transition-all cursor-pointer rounded-sm active:scale-95"
           >
-             ABORT_HANDSHAKE
+             CANCEL
           </button>
         </div>
       </motion.div>
