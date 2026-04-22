@@ -36,14 +36,26 @@ export class FriendRequestService {
     return data;
   }
 
-  // 3. 实时监听 (保留，用于 UI 自动弹窗)
-  static listenToRequests(myUid: string, callback: (requests: any[]) => void) {
-    // 这里依然使用 Firestore SDK 的 onSnapshot，但权限在 firestore.rules 中设为只读
+  // 3. 实时监听: 订阅好友请求
+  static subscribeToFriendRequests(
+    toUid: string, 
+    onRequestsUpdated: (requests: any[]) => void,
+    onNewRequest?: (request: any) => void
+  ) {
+    // 监听 FriendRequests 状态为 pending
     return onSnapshot(
-      query(collection(db, "friend_requests"), where("toUid", "==", myUid), where("status", "==", "pending")),
+      query(collection(db, "friend_requests"), where("toUid", "==", toUid), where("status", "==", "pending")),
       (snapshot) => {
+        if (onNewRequest) {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added' && !snapshot.metadata.fromCache) {
+              onNewRequest({ id: change.doc.id, ...change.doc.data() });
+            }
+          });
+        }
+
         const reqs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        callback(reqs);
+        onRequestsUpdated(reqs);
       }
     );
   }
@@ -55,5 +67,21 @@ export class FriendRequestService {
       body: JSON.stringify({ initiatorDid, targetDid, encryptionKey })
     });
     return response.json();
+  }
+
+  static listenForAclConfirmations(myUid: string, onAccepted: (requestId: string, peerDid: string) => void) {
+    const q = query(
+      collection(db, "friend_requests"),
+      where("fromUid", "==", myUid),
+      where("status", "==", "accepted")
+    );
+
+    return onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'modified' && !snapshot.metadata.fromCache) {
+          onAccepted(change.doc.id, change.doc.data().toUid);
+        }
+      });
+    });
   }
 }

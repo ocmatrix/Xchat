@@ -50,8 +50,8 @@ const handleFirestoreError = (error: any, operationType: FirestoreErrorInfo['ope
 export const FirebaseService = {
   // Node Discovery & Presence
   async syncUserProfile(did: string, name: string, avatar?: string) {
-    // Identity is now the Public Key (DID), not the centralized UID.
-    const nodeRef = doc(db, 'users', did);
+    if (!auth.currentUser) return;
+    const nodeRef = doc(db, 'users', auth.currentUser.uid);
     try {
       const avatarApi = import.meta.env.VITE_AVATAR_API || 'https://api.dicebear.com/7.x/pixel-art/svg';
       await setDoc(nodeRef, {
@@ -140,21 +140,17 @@ export const FirebaseService = {
     }, (e) => handleFirestoreError(e, 'list', `conversations/${convId}/messages`));
   },
 
-  async saveContact(contactData: { did: string, sharedKey: string, convId: string, addedAt: number }) {
-    const myDid = localStorage.getItem('NXS_IDENTITY_DID');
-    if (!myDid) {
-      console.error("🚫 CONTACT_SAVE_FAILED::IDENTITY_NOT_FOUND");
-      throw new Error("IDENTITY_NOT_FOUND: Please finish identity setup before adding contacts.");
-    }
-
+  async saveContact(contactData: { did: string, sharedKey: string, convId: string, addedAt?: number }) {
+    if (!auth.currentUser) return;
     try {
-      await setDoc(doc(db, 'users', myDid, 'contacts', contactData.did), {
+      await setDoc(doc(db, 'users', auth.currentUser.uid, 'contacts', contactData.did), {
         ...contactData,
+        addedAt: contactData.addedAt || Date.now(),
         name: "NOMAD_" + contactData.did.slice(-4).toUpperCase() // Default name
       });
       console.log(`✅ CONTACT_SAVED::DID=${contactData.did}`);
     } catch (e) {
-      handleFirestoreError(e, 'write', `users/${myDid}/contacts/${contactData.did}`);
+      handleFirestoreError(e, 'write', `users/${auth.currentUser.uid}/contacts/${contactData.did}`);
     }
   },
 

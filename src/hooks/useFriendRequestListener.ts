@@ -7,7 +7,7 @@ export const useFriendRequestListener = (userId: string | null) => {
     if (!userId) return;
 
     // B-side: Listen for requests
-    const unsubscribeRequests = FriendRequestService.listenForRequests(
+    const unsubscribeRequests = FriendRequestService.subscribeToFriendRequests(
       userId,
       (allRequests) => {
         console.log("🔄 [GCP_SYNC] 好友请求列表更新:", allRequests.length);

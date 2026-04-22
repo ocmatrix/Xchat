@@ -22,7 +22,7 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
   const [isCameraStarting, setIsCameraStarting] = useState(true);
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [pendingConnection, setPendingConnection] = useState<{ did: string; key: string; initiatorDid?: string; stats?: CompressedEnvelope } | null>(null);
-  const qrCodeRegionRef = useRef<Html5Qrcode | null>(null);
+const qrCodeRegionRef = useRef<Html5Qrcode | null>(null);
   const scannerId = "nexus-qr-reader";
 
   // Generate a cryptographically strong symmetric key (AES-GCM 256)
@@ -99,6 +99,8 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
     };
   }, []);
 
+  const [handshakeError, setHandshakeError] = useState<string | null>(null); // 🟢 增加握手错误状态
+
   const handleExternalConnect = async (did: string, key?: string) => {
     // Stop scanner first
     if (qrCodeRegionRef.current && qrCodeRegionRef.current.isScanning) {
@@ -107,14 +109,20 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
     
     setManualDid(did);
     setIsConnecting(true);
+    setHandshakeError(null); // 清除上次错误
     
     const finalKey = key || encryptionKey;
     
     // Ensure Sovereign Identity is established for the handshake
     let myIdentity = NexusSecurityService.getStoredIdentity();
     if (!myIdentity) {
-      console.log("🆔 GENERATING_ON_THE_FLY_IDENTITY...");
-      myIdentity = await NexusSecurityService.generateSovereignIdentity();
+      try {
+        myIdentity = await NexusSecurityService.generateSovereignIdentity();
+      } catch (e) {
+        setHandshakeError("身份生成限制 (权限不足)");
+        setIsConnecting(false);
+        return;
+      }
     }
 
     // Nexus Handshake Compression Optimization
@@ -132,10 +140,19 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
     
     // 🟢 关键：发起云端握手绑定
     try {
-        await FriendRequestService.p2pHandshake(myIdentity.did, did, finalKey);
+        const response = await FriendRequestService.p2pHandshake(myIdentity.did, did, finalKey);
+        if (response.error) throw new Error(response.error);
         console.log("✅ 云端握手记录已建立");
-    } catch (e) {
-        console.warn("⚠️ 云端握手记录失败(此时仍仅限本地连接):", e);
+    } catch (e: any) {
+        console.warn("⚠️ 云端握手记录失败:", e);
+        // 基于服务端返回或网络情况分类错误
+        if (e.message.includes('Network') || e.message.includes('Failed to fetch')) {
+             setHandshakeError("网络受限 (Check_Bridge)");
+        } else if (e.message.includes('Timeout')) {
+             setHandshakeError("握手超时 (Timeout)");
+        } else {
+             setHandshakeError("握手受阻 (Protocol_Mismatch)");
+        }
     }
 
     console.log("📦 NEXUS_LOAD_REDUCTION:", ((1 - envelope.compressedSize / envelope.originalSize) * 100).toFixed(1) + "%");
@@ -148,12 +165,15 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
       setTimeout(() => {
         setFlash(false);
         setIsConnecting(false);
-        setPendingConnection({ 
-          did, 
-          key: finalKey, 
-          initiatorDid: myIdentity.did,
-          stats: envelope 
-        });
+        // 只有没出错时才显示确认框
+        if (!handshakeError) {
+            setPendingConnection({ 
+              did, 
+              key: finalKey, 
+              initiatorDid: myIdentity.did,
+              stats: envelope 
+            });
+        }
       }, 500);
     }, 1000);
   };
@@ -506,15 +526,29 @@ const HandshakeConfirmation = ({ did, initiatorDid, encryptionKey, stats, isConn
             )}
           </button>
           
-          {/* Handshake Error Display */}
-          {/* Note: Simplified approach - assume cameraError serves as generic error feedback from PeerDiscovery */}
-          
-          <button 
-            onClick={onCancel}
-            className="w-full h-12 bg-transparent border border-nexus-border text-nexus-ink-muted opacity-40 font-bold text-[8px] tracking-[2px] uppercase hover:bg-white/5 transition-all cursor-pointer rounded-sm active:scale-95"
-          >
-             CANCEL
-          </button>
+            {/* Handshake Error Display */}
+            {handshakeError && (
+               <div className="w-full flex flex-col items-center space-y-3 mb-4">
+                 <div className="w-full bg-red-500/10 border border-red-500/30 p-3 rounded-sm flex items-center space-x-2 text-red-500">
+                   <AlertCircle size={14} />
+                   <span className="text-[9px] uppercase font-bold tracking-widest">{handshakeError}</span>
+                 </div>
+                 <button 
+                  onClick={() => handleManualConnect()}
+                  className="w-full h-10 bg-white/5 border border-nexus-border text-nexus-accent-blue font-bold text-[9px] tracking-[2px] uppercase hover:bg-white/10 transition-all cursor-pointer rounded-sm flex items-center justify-center space-x-2"
+                 >
+                    <RefreshCw size={12} />
+                    <span>RETRY_CONNECTION</span>
+                 </button>
+               </div>
+            )}
+           
+           <button 
+             onClick={onCancel}
+             className="w-full h-12 bg-transparent border border-nexus-border text-nexus-ink-muted opacity-40 font-bold text-[8px] tracking-[2px] uppercase hover:bg-white/5 transition-all cursor-pointer rounded-sm active:scale-95"
+           >
+              CANCEL
+           </button>
         </div>
       </motion.div>
     </motion.div>

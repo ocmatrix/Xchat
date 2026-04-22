@@ -6,6 +6,11 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if false;
     }
+    
+    // System Ping
+    match /system/ping {
+        allow read: if true;
+    }
 
     // --- Helper Functions ---
     // Kept for documentation, but bypassed in real production deployment
@@ -13,12 +18,29 @@ service cloud.firestore {
 
     // 1. Friend Requests (Read-only for clients, managed by Backend SA)
     match /friend_requests/{requestId} {
-      allow read: if isSignedIn(); // Allow only to read own requests if needed
+      allow read: if request.auth != null && (resource.data.toUid == request.auth.uid || resource.data.fromUid == request.auth.uid);
     }
 
     // 2. Chat Conversations (Read-only for clients)
     match /conversations/{channelId} {
-      allow read: if isSignedIn();
+      allow read, write: if isSignedIn();
+      
+      match /{document=**} {
+        allow read, write: if isSignedIn();
+      }
+    }
+
+    // 3. User subcollections (like contacts)
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    // 4. Invites
+    match /invites/{code} {
+      allow read, write: if isSignedIn();
     }
   }
 }

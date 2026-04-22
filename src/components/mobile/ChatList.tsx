@@ -135,14 +135,22 @@ export const ChatList = ({ dataReady, onViewDetails, onLightningCall, onNavigate
     // Sorting logic
     result.sort((a: any, b: any) => {
       if (sortBy === 'name') {
-        return a.name.localeCompare(b.name);
+        const nameA = a.name || "";
+        const nameB = b.name || "";
+        return nameA.localeCompare(nameB);
       }
       if (sortBy === 'status') {
-        if (a.online === b.online) return a.name.localeCompare(b.name);
+        if (a.online === b.online) {
+          const nameA = a.name || "";
+          const nameB = b.name || "";
+          return nameA.localeCompare(nameB);
+        }
         return a.online ? -1 : 1;
       }
       if (sortBy === 'timestamp') {
-        return b.timestamp.localeCompare(a.timestamp);
+        const timeA = a.timestamp || "";
+        const timeB = b.timestamp || "";
+        return timeB.localeCompare(timeA);
       }
       return 0;
     });                
