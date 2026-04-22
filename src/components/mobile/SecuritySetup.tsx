@@ -11,12 +11,14 @@ export const SecuritySetup: React.FC<SecuritySetupProps> = ({ onComplete }) => {
   const [step, setStep] = useState<'INTRO' | 'GENERATING' | 'RESULT' | 'RECOVER' | 'SYNC_SCAN' | 'SYNCING'>('INTRO');
   const [generatedDid, setGeneratedDid] = useState("");
   const [generatedSeed, setGeneratedSeed] = useState("");
+  const [backupVerified, setBackupVerified] = useState(false);
   
   // Recovery/Sync state
   const [inputSeed, setInputSeed] = useState("");
 
   const generateIdentity = async () => {
     setStep('GENERATING');
+    setBackupVerified(false);
     await new Promise(r => setTimeout(r, 2000));
     const did = `did:key:z6M${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 10)}`;
     const seed = Array.from({length: 4}, () => Math.random().toString(36).substring(2, 6).toUpperCase()).join('-');
@@ -27,6 +29,7 @@ export const SecuritySetup: React.FC<SecuritySetupProps> = ({ onComplete }) => {
 
   const handleRecover = async () => {
     setStep('GENERATING');
+    setBackupVerified(true);
     await new Promise(r => setTimeout(r, 1500));
     // Simulated deterministic derivation from seed
     const recoveredDid = `did:key:z6M_RECOVERED_${inputSeed.split('-')[0] || 'INF'}`;
@@ -262,6 +265,17 @@ export const SecuritySetup: React.FC<SecuritySetupProps> = ({ onComplete }) => {
                             Copy
                           </button>
                        </div>
+                       <label className="flex items-start space-x-3 mt-2 cursor-pointer select-none">
+                         <input
+                           type="checkbox"
+                           className="mt-1"
+                           checked={backupVerified}
+                           onChange={(e) => setBackupVerified(e.target.checked)}
+                         />
+                         <span className="text-[13px] text-[#8E8E93] leading-relaxed">
+                           我已离线备份助记词，理解丢失后无法找回身份。
+                         </span>
+                       </label>
                     </div>
                   </div>
                 )}
@@ -269,7 +283,8 @@ export const SecuritySetup: React.FC<SecuritySetupProps> = ({ onComplete }) => {
 
               <button 
                 onClick={() => onComplete(generatedDid)}
-                className="w-full py-3.5 bg-[#007AFF] text-white font-semibold text-[17px] rounded-xl flex items-center justify-center space-x-2 active:bg-[#007AFF]/80 transition-colors focus:outline-none"
+                disabled={!!generatedSeed && !backupVerified}
+                className="w-full py-3.5 bg-[#007AFF] text-white font-semibold text-[17px] rounded-xl flex items-center justify-center space-x-2 active:bg-[#007AFF]/80 transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span>Continue</span>
               </button>

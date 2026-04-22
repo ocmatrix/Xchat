@@ -22,6 +22,7 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [pendingConnection, setPendingConnection] = useState<{ did: string; key: string; stats?: CompressedEnvelope } | null>(null);
   const qrCodeRegionRef = useRef<Html5Qrcode | null>(null);
+  const isProcessingRef = useRef(false);
   const scannerId = "nexus-qr-reader";
 
   const parseScannedPayload = (raw: string) => {
@@ -73,10 +74,13 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
           { facingMode: "environment" },
           config,
           (decodedText) => {
+             if (isProcessingRef.current) return;
+             isProcessingRef.current = true;
              console.log("🔓 QR_PAYLOAD_DECRYPTED:", decodedText);
              const parsedPayload = parseScannedPayload(decodedText);
              if (!parsedPayload?.did) {
                setCameraError('二维码数据无效，缺少 DID');
+               isProcessingRef.current = false;
                return;
              }
              handleExternalConnect(parsedPayload.did, parsedPayload.key);
@@ -106,6 +110,7 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
     try {
       if (!did || !did.trim()) {
         setCameraError('目标节点 DID 为空');
+        isProcessingRef.current = false;
         return;
       }
 
@@ -146,6 +151,7 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
       console.error('PEER_DISCOVERY_HANDSHAKE_FAILURE::', error);
       setIsConnecting(false);
       setCameraError('扫码握手失败，请重试');
+      isProcessingRef.current = false;
     }
   };
 
@@ -176,15 +182,20 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
                 });
                 if (!saved) {
                   setCameraError('安全存储区写入失败');
+                  isProcessingRef.current = false;
                   return;
                 }
                 onConnected(pendingConnection.did, pendingConnection.key);
                 setPendingConnection(null);
+                isProcessingRef.current = false;
               } finally {
                 setIsConnecting(false);
               }
             }}
-            onCancel={() => setPendingConnection(null)}
+            onCancel={() => {
+              setPendingConnection(null);
+              isProcessingRef.current = false;
+            }}
           />
         )}
       </AnimatePresence>
