@@ -17,6 +17,7 @@
     "@tanstack/react-virtual": "^3.13.24",
     "@vitejs/plugin-react": "^5.0.4",
     "buffer": "^6.0.3",
+    "crypto-js": "^4.2.0",
     "dotenv": "^17.2.3",
     "file-saver": "^2.0.5",
     "firebase": "^12.12.1",

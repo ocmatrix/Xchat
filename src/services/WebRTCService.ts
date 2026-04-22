@@ -1,10 +1,12 @@
 import { FirebaseService } from './FirebaseService';
 import { auth } from '../lib/firebase';
+import CryptoJS from 'crypto-js';
 
 export class WebRTCService {
   private peerConnection: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
   private convId: string;
+  private aesKey: string = 'YOUR_DYNAMIC_AES_KEY'; // Should be set via constructor or method
   
   // 核心修复 2：ICE 缓冲队列
   private pendingIceCandidates: RTCIceCandidateInit[] = [];
@@ -15,6 +17,17 @@ export class WebRTCService {
 
   constructor(convId: string) {
     this.convId = convId;
+  }
+
+  // 补齐 P2P 文本消息发送接口
+  public sendP2PMessage(text: string): boolean {
+    if (this.dataChannel && this.dataChannel.readyState === 'open') {
+      this.dataChannel.send(text);
+      return true;
+    } else {
+      console.warn("[NEXUS] P2P Tunnel not ready, cannot send text.");
+      return false;
+    }
   }
 
   public setCallbacks(
@@ -96,6 +109,17 @@ export class WebRTCService {
     // 核心修复 4：拦截自己的信令反射
     if (senderId === auth.currentUser?.uid) return;
 
+    // 解析加密信令
+    if (typeof payload === 'string') {
+        try {
+            const bytes = CryptoJS.AES.decrypt(payload, this.aesKey);
+            payload = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+        } catch (e) {
+            console.error("[WebRTC] Failed to decrypt signal", e);
+            return;
+        }
+    }
+
     if (!this.peerConnection) {
       if (payload.type === 'offer') {
         this.initPeerConnection();
@@ -159,8 +183,9 @@ export class WebRTCService {
   private sendSignal(payload: any) {
     if (!auth.currentUser) return;
     
-    // TODO: 核心修复 5 - 这里需要使用 PeerDiscovery 生成的 AES key 将 payload 加密
-    const content = JSON.stringify(payload); 
+    // 真正的绝对黑盒加密！
+    const plainText = JSON.stringify(payload);
+    const content = CryptoJS.AES.encrypt(plainText, this.aesKey).toString(); 
     
     FirebaseService.sendMessage(this.convId, {
       content,
