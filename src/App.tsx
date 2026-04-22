@@ -163,6 +163,7 @@ export default function App() {
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeNodes, setActiveNodes] = useState<any[]>([]);
+  const [peerSessionKeys, setPeerSessionKeys] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -208,17 +209,29 @@ export default function App() {
     }
   }, [theme]);
 
+  useEffect(() => {
+    if (!activeContact?.did) return;
+    const latestKey = peerSessionKeys[activeContact.did];
+    if (!latestKey || activeContact.signalKey === latestKey) return;
+    setActiveContact((prev: any) => prev ? { ...prev, signalKey: latestKey } : prev);
+  }, [peerSessionKeys, activeContact]);
+
   const handleSelectContact = async (contact: any) => {
     setIsConversationOpen(true);
     let convId = contact.id;
     
     // For direct chats, if id is just the UID, we need to find/create the conversation doc
     if (!contact.isGroup) {
-      const resolvedId = await FirebaseService.getOrCreateDirectConversation(contact.did);
-      convId = resolvedId;
+      const directTargetId = contact.id || contact.uid || contact.did;
+      if (!directTargetId) {
+        throw new Error('Direct conversation target is missing an identifier');
+      }
+      const resolvedId = await FirebaseService.getOrCreateDirectConversation(directTargetId);
+      convId = resolvedId || convId;
     }
     
-    setActiveContact({ ...contact, convId });
+    const signalKey = contact.did ? peerSessionKeys[contact.did] : undefined;
+    setActiveContact({ ...contact, convId, signalKey });
   };
 
   const handleBack = () => {
@@ -417,6 +430,7 @@ export default function App() {
                       onBack={handleBack}
                       isGroup={activeContact?.isGroup}
                       convId={activeContact?.convId}
+                      signalKey={activeContact?.signalKey}
                       isIsolated={activeContact?.isIsolated}
                       targetName={activeContact?.name || (activeContact?.did && activeContact.did.includes(':') ? `${activeContact.did.slice(0, 12)}...` : activeContact?.did)}
                     />
@@ -528,6 +542,9 @@ export default function App() {
                <PeerDiscovery 
                  onClose={() => setOverlayScreen(null)}
                  onConnected={(did, encKey) => {
+                   if (encKey) {
+                     setPeerSessionKeys(prev => ({ ...prev, [did]: encKey }));
+                   }
                    setOverlayScreen(null);
                    console.log("HANDSHAKE SUCCESSFUL WITH:", did);
                    if (encKey) {
@@ -562,5 +579,3 @@ export default function App() {
     </div>
   );
 }
-
-
