@@ -66,7 +66,7 @@ export const FirebaseService = {
   },
 
   // Conversation Management
-  async getOrCreateDirectConversation(targetDid: string) {
+  async getOrCreateDirectConversation(targetUserId: string) {
     if (!auth.currentUser) return null;
     const myUid = auth.currentUser.uid;
     
@@ -78,14 +78,14 @@ export const FirebaseService = {
     );
     
     const snapshot = await getDocs(q);
-    const existing = snapshot.docs.find(d => d.data().participants.includes(targetDid));
+    const existing = snapshot.docs.find(d => d.data().participants.includes(targetUserId));
     
     if (existing) return existing.id;
 
     // Create new
     const convRef = await addDoc(collection(db, 'conversations'), {
       type: 'direct',
-      participants: [myUid, targetDid],
+      participants: [myUid, targetUserId],
       updatedAt: serverTimestamp(),
       isIsolated: false
     });

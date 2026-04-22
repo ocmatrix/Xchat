@@ -269,13 +269,14 @@ const MemoizedMessageBubble = React.memo(({ item, idx, arr, burningCountdown, se
   );
 });
 
-export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsolated = false, targetName = "SECURE CHANNEL", convId }: { 
+export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsolated = false, targetName = "SECURE CHANNEL", convId, signalKey }: { 
   onLightningCall: (mode: 'voice' | 'video') => void, 
   onBack: () => void, 
   isGroup?: boolean, 
   isIsolated?: boolean, 
   targetName?: string,
-  convId?: string
+  convId?: string,
+  signalKey?: string
 }) => {
   const [showGroupPanel, setShowGroupPanel] = useState(false);
   const [showPrivateChatSettings, setShowPrivateChatSettings] = useState(false);
@@ -296,6 +297,13 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const webrtcService = useMemo(() => convId ? new WebRTCService(convId) : null, [convId]);
   const processedSignals = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!webrtcService) return;
+    webrtcService.setSignalEncryptionKey(signalKey).catch((error) => {
+      console.error("WebRTC signal-key setup failed:", error);
+    });
+  }, [webrtcService, signalKey]);
 
   // WebRTC Handlers
   const handleStartCall = async (mode: 'voice' | 'video') => {
@@ -383,11 +391,11 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
           if (!isMyMessage && !processedSignals.current.has(m.id)) {
             processedSignals.current.add(m.id);
             if (webrtcService) {
-              const payload = JSON.parse(m.content || '{}');
-              if (payload.type === 'offer' && videoCallState === 'idle') {
-                setVideoCallState('receiving');
-              }
-              webrtcService.handleIncomingSignal(m.content);
+              void webrtcService.handleIncomingSignal(m.content, m.senderId).then((signalType) => {
+                if (signalType === 'offer' && videoCallState === 'idle') {
+                  setVideoCallState('receiving');
+                }
+              });
             }
           }
           return; // Do not render signals
