@@ -16,6 +16,7 @@ import { AuditoriumMeeting } from './components/mobile/AuditoriumMeeting';
 import { SecuritySetup } from './components/mobile/SecuritySetup';
 import LogoIcon from './components/LogoIcon';
 import { MessageSquare, Users, Shield, ShieldAlert, Plus, Radar, Sun, Moon, Battery, Wifi, Signal, Activity, Cpu, Hexagon, Search, UserPlus, X, PhoneOff } from 'lucide-react';
+import { NexusContactService, SovereignContact } from './services/NexusContactService';
 
 // Global Safety Shim for Sovereign Node Environment
 if (typeof window !== 'undefined') {
@@ -163,6 +164,7 @@ export default function App() {
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeNodes, setActiveNodes] = useState<any[]>([]);
+  const [localContacts, setLocalContacts] = useState<SovereignContact[]>([]);
   const [peerSessionKeys, setPeerSessionKeys] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -200,6 +202,14 @@ export default function App() {
   }, [currentUser]);
 
   useEffect(() => {
+    const loadContacts = () => setLocalContacts(NexusContactService.getLocalContacts());
+    loadContacts();
+    const updateEvent = NexusContactService.getUpdateEventName();
+    window.addEventListener(updateEvent, loadContacts);
+    return () => window.removeEventListener(updateEvent, loadContacts);
+  }, []);
+
+  useEffect(() => {
     if (theme === 'light') {
       document.documentElement.setAttribute('data-theme', 'light');
       document.body.classList.remove('dark-theme');
@@ -218,19 +228,21 @@ export default function App() {
 
   const handleSelectContact = async (contact: any) => {
     setIsConversationOpen(true);
-    let convId = contact.id;
+    let convId = contact.convId || contact.id;
     
     // For direct chats, if id is just the UID, we need to find/create the conversation doc
     if (!contact.isGroup) {
-      const directTargetId = contact.id || contact.uid || contact.did;
-      if (!directTargetId) {
-        throw new Error('Direct conversation target is missing an identifier');
+      if (!convId) {
+        const directTargetId = contact.id || contact.uid || contact.did;
+        if (!directTargetId) {
+          throw new Error('Direct conversation target is missing an identifier');
+        }
+        const resolvedId = await FirebaseService.getOrCreateDirectConversation(directTargetId);
+        convId = resolvedId || convId;
       }
-      const resolvedId = await FirebaseService.getOrCreateDirectConversation(directTargetId);
-      convId = resolvedId || convId;
     }
     
-    const signalKey = contact.did ? peerSessionKeys[contact.did] : undefined;
+    const signalKey = contact.sharedKey || (contact.did ? peerSessionKeys[contact.did] : undefined);
     setActiveContact({ ...contact, convId, signalKey });
   };
 
@@ -260,7 +272,7 @@ export default function App() {
     }
   };
 
-  const filteredContacts = activeNodes.filter(c => {
+  const filteredContacts = localContacts.filter(c => {
     if (activeTab === 'ONLINE') return c.online;
     return true;
   }).sort((a, b) => {

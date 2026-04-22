@@ -3,6 +3,8 @@ import { X, Scan, Send, AlertCircle, Camera, Loader2, Key, Shield, RefreshCw, Ey
 import { motion, AnimatePresence } from 'motion/react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { NexusCompressionService, CompressedEnvelope } from '../../services/NexusCompressionService';
+import { NexusContactService } from '../../services/NexusContactService';
+import { auth } from '../../lib/firebase';
 
 interface PeerDiscoveryProps {
   onClose: () => void;
@@ -132,9 +134,26 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
             did={pendingConnection.did}
             encryptionKey={pendingConnection.key}
             stats={pendingConnection.stats}
-            onConfirm={() => {
-              onConnected(pendingConnection.did, pendingConnection.key);
-              setPendingConnection(null);
+            onConfirm={async () => {
+              if (isConnecting) return;
+              setIsConnecting(true);
+              try {
+                const localNodeId = auth.currentUser?.uid || 'LOCAL_NODE';
+                const deterministicConvId = NexusContactService.buildDeterministicConvId(localNodeId, pendingConnection.did);
+                const saved = NexusContactService.saveContactLocally({
+                  did: pendingConnection.did,
+                  sharedKey: pendingConnection.key,
+                  convId: deterministicConvId
+                });
+                if (!saved) {
+                  setCameraError('安全存储区写入失败');
+                  return;
+                }
+                onConnected(pendingConnection.did, pendingConnection.key);
+                setPendingConnection(null);
+              } finally {
+                setIsConnecting(false);
+              }
             }}
             onCancel={() => setPendingConnection(null)}
           />
