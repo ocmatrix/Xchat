@@ -1,6 +1,6 @@
 {
-  "name": "REALEX DOTCOM",
-  "description": "REALEX Sovereign Node Protocol. Secure, hardware-attested communication infrastructure.",
+  "name": "DotCom",
+  "description": "DotCom Sovereign Node Protocol. Secure, hardware-attested communication infrastructure.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": []
 }

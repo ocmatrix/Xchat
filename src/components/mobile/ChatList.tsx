@@ -70,7 +70,7 @@ const ContactListItem = React.memo(({ item, index, isLast, onSelectContact }: an
   );
 });
 
-export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigateToNodes, searchQuery: externalSearchQuery }: any) => {
+export const ChatList = ({ contacts, dataReady, onSelectContact, onLightningCall, onNavigateToNodes, searchQuery: externalSearchQuery }: any) => {
   const [sortBy, setSortBy] = useState<SortCriteria>('timestamp');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newContactDID, setNewContactDID] = useState("");
@@ -141,39 +141,53 @@ export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigat
         ref={parentRef}
         className="flex-1 overflow-y-auto px-0 pb-12"
       >
-        <div 
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            width: '100%',
-            position: 'relative',
-          }}
-        >
-          {virtualizer.getVirtualItems().map((virtualItem) => {
-            const item = processedContacts[virtualItem.index];
-            return (
-              <div
-                key={virtualItem.key}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: `${virtualItem.size}px`,
-                  transform: `translateY(${virtualItem.start}px)`,
-                }}
-              >
-                <ContactListItem 
-                  item={item} 
-                  index={virtualItem.index} 
-                  isLast={virtualItem.index === processedContacts.length - 1}
-                  onSelectContact={handleSelectContactAction}
-                />
-              </div>
-            );
-          })}
-        </div>
+        {!dataReady && contacts.length === 0 && !externalSearchQuery ? (
+          <div className="px-4 py-2 space-y-4">
+             {[1,2,3,4,5,6].map(i => (
+               <div key={i} className="flex items-center space-x-4 animate-pulse">
+                 <div className="w-12 h-12 bg-black/5 dark:bg-white/5 rounded-full" />
+                 <div className="flex-1 space-y-2 py-1">
+                   <div className="h-4 bg-black/5 dark:bg-white/5 rounded-sm w-1/3" />
+                   <div className="h-3 bg-black/5 dark:bg-white/5 rounded-sm w-3/4" />
+                 </div>
+               </div>
+             ))}
+          </div>
+        ) : (
+          <div 
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualItem) => {
+              const item = processedContacts[virtualItem.index];
+              return (
+                <div
+                  key={virtualItem.key}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${virtualItem.size}px`,
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                >
+                  <ContactListItem 
+                    item={item} 
+                    index={virtualItem.index} 
+                    isLast={virtualItem.index === processedContacts.length - 1}
+                    onSelectContact={handleSelectContactAction}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
         
-        {processedContacts.length === 0 && (
+        {processedContacts.length === 0 && externalSearchQuery && (
            <div className="py-24 flex flex-col items-center justify-center text-center px-6">
               <div className="relative mb-6">
                  <div className="w-20 h-20 rounded-full bg-[#F2F2F7] dark:bg-[#2C2C2E] flex items-center justify-center">

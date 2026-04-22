@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { toPng } from 'html-to-image';
 import { saveAs } from 'file-saver';
-import { Download, ShieldCheck, WifiOff, Clock } from 'lucide-react';
+import { Download, ShieldCheck, WifiOff, Clock, Copy, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface IdentityCardProps {
@@ -16,6 +16,7 @@ interface IdentityCardProps {
 export const IdentityCard = ({ did }: IdentityCardProps) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -57,7 +58,7 @@ export const IdentityCard = ({ did }: IdentityCardProps) => {
       {/* The Actual Card Area for Export */}
       <div 
         ref={cardRef}
-        className={`bg-nexus-surface p-12 border relative overflow-hidden flex flex-col items-center shadow-[0_0_80px_rgba(0,0,0,0.6)] transition-all duration-700 ${
+        className={`bg-black p-12 border relative overflow-hidden flex flex-col items-center shadow-[0_0_80px_rgba(0,0,0,0.6)] transition-all duration-700 ${
           isOffline ? 'border-[#EF4444]/40 grayscale-[0.2]' : 'border-nexus-border'
         }`}
         id="nexus-identity-card"
@@ -103,6 +104,7 @@ export const IdentityCard = ({ did }: IdentityCardProps) => {
               <span className="text-nexus-ink-muted opacity-50 text-[7px] tracking-[2px] uppercase font-bold">
                 IDENTITY_VERIFICATION_MATRIX_V4.2
               </span>
+              <p className="text-[6px] text-nexus-accent-gold font-bold uppercase mt-1 tracking-widest">» SCAN_TO_ESTABLISH_P2P_LINK</p>
            </div>
            
            <div className="flex flex-col items-end opacity-40">
@@ -124,7 +126,7 @@ export const IdentityCard = ({ did }: IdentityCardProps) => {
                 value={did}
                 size={220}
                 bgColor="transparent"
-                fgColor={isOffline ? "#EF4444" : "#D4AF37"}
+                fgColor="#FFFFFF"
                 level="H"
                 includeMargin={false}
                 className="transition-all duration-1000 opacity-90 grayscale-[0.2]"
@@ -148,8 +150,24 @@ export const IdentityCard = ({ did }: IdentityCardProps) => {
         <div className="w-full mt-12 bg-nexus-border opacity-50 border border-nexus-border p-6 relative overflow-hidden z-20">
            <div className="absolute top-0 right-0 w-16 h-1 bg-nexus-accent-gold/20" />
            
-           <div className="flex flex-col mb-6">
-              <span className="text-nexus-ink-muted opacity-50 text-[6px] tracking-[3px] uppercase mb-1 font-black leading-none">NODE_IDENTIFIER</span>
+           <div className="flex flex-col mb-6 group/id relative">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-nexus-ink-muted opacity-50 text-[6px] tracking-[3px] uppercase font-black leading-none">NODE_IDENTIFIER</span>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(did);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="w-full mt-4 py-3 flex justify-center items-center space-x-2 bg-nexus-accent-gold/20 hover:bg-nexus-accent-gold/40 border border-nexus-accent-gold/50 rounded-lg transition-all"
+                >
+                  <span className="text-nexus-accent-gold font-black uppercase tracking-widest text-xs">
+                    {copied ? 'DID_COPIED' : 'COPY_YOUR_DID'}
+                  </span>
+                  {copied ? <Check size={14} className="text-nexus-accent-gold" /> : <Copy size={14} className="text-nexus-accent-gold" />}
+                </button>
+              </div>
               <span className={`text-[10px] break-all leading-tight tracking-[1px] font-bold transition-opacity duration-500 ${isOffline ? 'text-[#EF4444]/80' : 'text-nexus-ink/80'}`}>
                 {did}
               </span>

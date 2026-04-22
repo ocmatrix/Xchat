@@ -1,7 +1,7 @@
 {
-  "name": "REALEX DOTCOM",
-  "short_name": "REALEX",
-  "description": "REALEX Sovereign Communication Protocol",
+  "name": "DotCom",
+  "short_name": "DotCom",
+  "description": "DotCom Sovereign Communication Protocol",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0A0A0A",

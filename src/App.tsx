@@ -5,9 +5,12 @@ import { auth, db } from './lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, onSnapshot, query, limit } from 'firebase/firestore';
 import { FirebaseService } from './services/FirebaseService';
+import { NexusSecurityService } from './services/NexusSecurityService';
+import { NexusUtilityService } from './services/NexusUtilityService';
 import { ChatList } from './components/mobile/ChatList';
 import { Conversation } from './components/mobile/Conversation';
 import { ProfileSettings } from './components/mobile/ProfileSettings';
+import { IdentityCard } from './components/mobile/IdentityCard';
 import { MediaCall } from './components/mobile/MediaCall';
 import { InitiateGroup } from './components/mobile/InitiateGroup';
 import { PeerDiscovery } from './components/mobile/PeerDiscovery';
@@ -15,7 +18,7 @@ import { NodeRegistry } from './components/mobile/NodeRegistry';
 import { AuditoriumMeeting } from './components/mobile/AuditoriumMeeting';
 import { SecuritySetup } from './components/mobile/SecuritySetup';
 import LogoIcon from './components/LogoIcon';
-import { MessageSquare, Users, Shield, ShieldAlert, Plus, Radar, Sun, Moon, Battery, Wifi, Signal, Activity, Cpu, Hexagon, Search, UserPlus, X, PhoneOff } from 'lucide-react';
+import { MessageSquare, Users, Shield, ShieldAlert, Plus, Radar, Sun, Moon, Battery, Wifi, Signal, Activity, Cpu, Hexagon, Search, UserPlus, X, PhoneOff, RefreshCw, QrCode, Network } from 'lucide-react';
 
 // Global Safety Shim for Sovereign Node Environment
 if (typeof window !== 'undefined') {
@@ -55,21 +58,38 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { hasError
 
   render() {
     if (this.state.hasError) {
+      const isHardwareError = this.state.errorDetail.toLowerCase().includes('media') || 
+                               this.state.errorDetail.toLowerCase().includes('permission') ||
+                               this.state.errorDetail.toLowerCase().includes('device');
+      const isProtocolError = this.state.errorDetail.toLowerCase().includes('firebase') ||
+                               this.state.errorDetail.toLowerCase().includes('firestore') ||
+                               this.state.errorDetail.toLowerCase().includes('network');
+
       return (
         <div className="absolute inset-0 bg-[#0A0A0A] flex flex-col items-center justify-center p-8 text-center border-[8px] border-[#1A1A1A] rounded-[40px] overflow-hidden">
           <ShieldAlert size={48} className="text-[#EF4444] mb-4 opacity-50" />
           <h2 className="text-[#D4AF37] font-mono text-xs tracking-[4px] uppercase mb-4">Kernel_Panic</h2>
-          <p className="text-[#A9A9A9] font-mono text-[8px] tracking-[1.5px] uppercase opacity-40 leading-loose">
-            Environmental integrity compromised. <br/>
+          <div className="bg-[#EF4444]/10 border border-[#EF4444]/20 px-3 py-1 mb-4 rounded-full">
+            <span className="text-[#EF4444] font-mono text-[9px] uppercase tracking-widest font-bold">
+              {isHardwareError ? 'Hardware_Access_Denied' : isProtocolError ? 'Core_Protocol_Failure' : 'Unexpected_Runtime_Exception'}
+            </span>
+          </div>
+          <p className="text-[#A9A9A9] font-mono text-[8px] tracking-[1.5px] uppercase opacity-40 leading-loose max-w-xs">
+            {isHardwareError 
+              ? 'Critical failure: Secure node unable to interface with biometric or media hardware. Check browser permissions.'
+              : 'Network integrity compromised: Core protocol handshake failed or database link severed.'
+            } 
+            <br/>
             Attempting automatic node recovery...
           </p>
           <div className="mt-4 p-4 bg-black/50 border border-red-500/30 rounded max-w-[80vw] overflow-auto">
-            <span className="text-red-400 font-mono text-[9px] text-left">{this.state.errorDetail.substring(0, 100)}...</span>
+            <span className="text-red-400 font-mono text-[9px] text-left">{this.state.errorDetail.substring(0, 150)}</span>
           </div>
           <button 
             onClick={() => window.location.reload()}
-            className="mt-8 border border-black/20 px-6 py-2 text-white font-sans text-xs font-semibold uppercase tracking-wider active:bg-black/10 bg-white/10 hover:bg-white/20 cursor-pointer rounded-full transition-colors"
+            className="mt-8 border border-white/10 px-6 py-2 text-white font-sans text-xs font-semibold uppercase tracking-wider active:bg-white/5 bg-white/10 hover:bg-white/20 cursor-pointer rounded-full transition-all flex items-center gap-2"
           >
+            <RefreshCw size={12} className="animate-spin-slow" />
             Hot Reload App
           </button>
         </div>
@@ -139,48 +159,91 @@ const MOCK_MESSAGES = [
   { id: '4_3', type: 'call', callType: 'video', callState: 'missed', sender: 'them', timestamp: Date.now() - 3600000 },
   { id: '5', text: 'Sending payload chunk 1/3...', sender: 'them', mlsEpoch: '4AA0' },
 ];
-
-const MOCK_DEVICES = [
-  { id: '1', name: 'Primary Node (iPhone 14 Pro)', lastSeen: 'NOW', ip: '192.168.1.42', isCurrent: true },
-  { id: '2', name: 'Backup Node (MacBook Pro)', lastSeen: '2 HOURS AGO', ip: '10.0.0.15', isCurrent: false },
-];
-
-type MainTab = 'LATEST' | 'ONLINE' | 'A-Z';
+  
+  const MOCK_DEVICES = [
+    { id: '1', name: 'Primary Node (iPhone 14 Pro)', lastSeen: 'NOW', ip: '192.168.1.42', isCurrent: true },
+    { id: '2', name: 'Backup Node (MacBook Pro)', lastSeen: '2 HOURS AGO', ip: '10.0.0.15', isCurrent: false },
+  ];
+  
+  type MainTab = 'LATEST' | 'ONLINE' | 'A-Z';
+  
+  const IOSInstallPrompt = () => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone = ('standalone' in navigator) && (navigator.standalone);
+    
+    if (!isIOS || isStandalone) return null;
+    
+    return (
+        <div className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-lg p-6 border-t border-white/10 z-[10000] text-center text-white flex flex-col items-center gap-2">
+            <span className="text-[10px] uppercase tracking-widest text-[#D4AF37]">Install Sovereign Node</span>
+            <p className="text-[9px] text-white/60">Tap <span className="font-bold">Share</span> then <span className="font-bold">Add to Home Screen</span></p>
+        </div>
+    );
+};
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<MainTab>('LATEST');
-  const [currentView, setCurrentView] = useState<'CHAT' | 'NODES' | 'SECURITY'>('CHAT'); // ADDED
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isConversationOpen, setIsConversationOpen] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [myDid, setMyDid] = useState("");
-  const [activeContact, setActiveContact] = useState<any>(null);
-  const [overlayScreen, setOverlayScreen] = useState<'MediaCall' | 'InitiateGroup' | 'PeerDiscovery' | 'AuditoriumMeeting' | null>(null);
-  const [callMode, setCallMode] = useState<'voice' | 'video'>('video');
-  const [isMeetingMinimized, setIsMeetingMinimized] = useState(false);
+    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+    useEffect(() => {
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        });
+    }, []);
+
+    const [activeTab, setActiveTab] = useState<MainTab>('LATEST');
+    const [currentView, setCurrentView] = useState<'CHAT' | 'NODES' | 'SECURITY'>('CHAT'); 
+    const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isConversationOpen, setIsConversationOpen] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
+    const [myDid, setMyDid] = useState("");
+    const [activeContact, setActiveContact] = useState<any>(null);
+    const [overlayScreen, setOverlayScreen] = useState<'MediaCall' | 'InitiateGroup' | 'PeerDiscovery' | 'AuditoriumMeeting' | 'MyIdentity' | null>(null);
+    const [callMode, setCallMode] = useState<'voice' | 'video'>('video');
+    const [isMeetingMinimized, setIsMeetingMinimized] = useState(false);
   const [callParticipantsCount, setCallParticipantsCount] = useState(1);
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeNodes, setActiveNodes] = useState<any[]>([]);
+  const [dataReady, setDataReady] = useState(false);
 
+  // Row 1: App Boot & Mesh Synchronization
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
+    // 1. HARDCORE_GEEK_BOOT::Check local hardware enclave
+    const stored = NexusSecurityService.getStoredIdentity();
+    if (stored) {
+      setMyDid(stored.did);
+      setIsInitialized(true);
+      console.log(`🔌 SOVEREIGN_BOOT_SUCCESS::DID=${stored.did}`);
+    }
+
+    // 2. NETWORK_BRIDGE::Maintain anonymous transport layer
+    const unsub = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUser(user);
-        const deterministicDid = `did:nexus:node:${user.uid.slice(0, 16)}`;
-        setMyDid(deterministicDid);
-        setIsInitialized(true);
+        console.log(`🌐 MESH_BRIDGE_ACTIVE::ID=${user.uid}`);
       } else {
         setCurrentUser(null);
-        setIsInitialized(false);
       }
     });
+
     return () => unsub();
   }, []);
 
+  // Row 2: Distributed Node Discovery
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      if (isInitialized) {
+        // Isolated Mode: Provide system nodes for UI exploration
+        setActiveNodes([
+          { did: 'did:nexus:node:gateway', name: 'NEXUS_GATEWAY_V1', status: 'online', avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=gateway&backgroundColor=0047AB' },
+          { did: 'did:nexus:node:relay-01', name: 'DEEP_SEA_RELAY', status: 'busy', avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=relay&backgroundColor=008299' }
+        ]);
+        setDataReady(true);
+      }
+      return;
+    }
     const q = query(collection(db, 'users'), limit(50));
     const unsub = onSnapshot(q, (snapshot) => {
       const nodes = snapshot.docs
@@ -194,6 +257,7 @@ export default function App() {
           timestamp: 'NOW'
         }));
       setActiveNodes(nodes);
+      setDataReady(true);
     });
     return () => unsub();
   }, [currentUser]);
@@ -257,47 +321,98 @@ export default function App() {
 
   return (
     <div className={`min-h-screen w-full flex items-center justify-center font-sans transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-[#F4F4F5] bg-[radial-gradient(#D4D4D8_1px,transparent_1px)] [background-size:12px_12px]'}`}>
+      
+      {/* PWA Progressive Splash Overlay */}
+      <AnimatePresence>
+        {!isInitialized && currentUser && (
+          <motion.div 
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-[#0A0A0A] flex flex-col items-center justify-center"
+          >
+            <div className="relative w-24 h-24 mb-12 flex items-center justify-center">
+              <LogoIcon className="text-[96px]" />
+            </div>
+            <div className="flex flex-col items-center space-y-2">
+              <span className="text-nexus-accent-gold font-mono text-[9px] tracking-[4px] uppercase font-bold animate-pulse">
+                Establishing_Secure_Enclave
+              </span>
+              <div className="w-48 h-[1px] bg-white/5 relative overflow-hidden">
+                <motion.div 
+                  initial={{ x: '-100%' }}
+                  animate={{ x: '100%' }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                  className="absolute inset-0 bg-nexus-accent-gold/40"
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Container - Command Center Architecture */}
-      <div className={`w-full h-[100dvh] sm:w-[393px] sm:h-[852px] ${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-transparent'} flex flex-col relative sm:border sm:border-black/10 dark:sm:border-white/10 sm:rounded-[6px] overflow-hidden transition-colors duration-500 shadow-2xl`}>
+      <div className={`w-full h-[100dvh] sm:w-[393px] sm:h-[852px] ${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-transparent'} flex flex-col relative sm:border sm:border-black/10 dark:sm:border-white/10 sm:rounded-[6px] overflow-hidden transition-colors duration-500 shadow-2xl safe-area-container`}>
         
-        {!currentUser ? (
+        
+        {/* iOS Install Prompt */}
+        <IOSInstallPrompt />
+
+        {(!currentUser && !isInitialized) ? (
           <AuthWall onSuccess={handleSetupComplete} />
         ) : (
           <>
             {/* Row 1: System Telemetry & Status (h-9) - HIDDEN WHEN IN CONVERSATION */}
-        {!isConversationOpen && (
-          <div className="absolute top-0 left-0 right-0 z-[5000] w-full bg-white/40 dark:bg-black/40 backdrop-blur-md border-b flex items-center justify-between h-9 px-4 transition-all duration-500" style={{ borderColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+            {!isConversationOpen && (
+              <div className="absolute top-0 left-0 right-0 z-[5000] w-full bg-white/40 dark:bg-black/40 backdrop-blur-md border-b flex items-center justify-between transition-all duration-500 pt-4" style={{ transform: 'translateZ(10px)', height: 'calc(2.25rem + 0.5rem)', paddingLeft: 'calc(1rem + env(safe-area-inset-left))', paddingRight: 'calc(1rem + env(safe-area-inset-right))', borderColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+                
+                {/* Left: Brand + Active Dot + Telemetry */}
+                <div className="flex items-center space-x-3">
+                  <div className="text-[20px] text-black dark:text-white flex items-center justify-center">
+                      <LogoIcon />
+                  </div>
+                  <h1 className="text-[14px] font-black text-black dark:text-white uppercase tracking-tight font-sans leading-none">
+                    DotCom
+                  </h1>
+                  <div className="flex items-center space-x-2 font-mono leading-none">
+                      <div className={`w-1.5 h-1.5 ${currentUser ? 'bg-[#00FF41] shadow-[0_0_8px_rgba(0,255,65,0.6)]' : 'bg-[#FF9500] shadow-[0_0_8px_rgba(255,149,0,0.6)]'} rounded-full shrink-0`}></div>
+                      <span className={`text-[#6B7280] dark:text-[#9CA3AF] text-[10px] font-bold tracking-tighter ${!currentUser && 'animate-pulse'}`}>
+                        {currentUser ? 'L: 14MS S: 0x4B2' : 'ISOLATED_NODE_OFFLINE'}
+                      </span>
+                  </div>
+                </div>
             
-            {/* Left: Brand + Active Dot + Telemetry */}
-            <div className="flex items-center space-x-3">
-              <div className="text-[20px] text-black dark:text-white flex items-center justify-center">
-                  <LogoIcon />
+                {/* Right: System Utilities */}
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={() => setOverlayScreen('PeerDiscovery')}
+                    className="flex items-center justify-center w-6 h-6 text-nexus-accent-blue transition-all cursor-pointer active:scale-90"
+                    title="Manual Handshake"
+                  >
+                    <Network size={14} strokeWidth={2} />
+                  </button>
+                  {currentView === 'SECURITY' && isInitialized && (
+                    <button 
+                      onClick={() => setOverlayScreen('MyIdentity')}
+                      className="flex items-center justify-center w-6 h-6 text-nexus-accent-gold transition-all cursor-pointer active:scale-90"
+                      title="Show Identity Card"
+                    >
+                      <QrCode size={14} strokeWidth={2} />
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+                    className="flex items-center justify-center text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-all cursor-pointer active:scale-90"
+                  >
+                    <Moon size={12} strokeWidth={2.5} />
+                  </button>
+                  <button 
+                    className="flex items-center justify-center text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-all cursor-pointer active:scale-90"
+                  >
+                    <Activity size={12} strokeWidth={2.5} />
+                  </button>
+                </div>
               </div>
-              <h1 className="text-[14px] font-black text-black dark:text-white uppercase tracking-tight font-sans leading-none">
-                REALEX
-              </h1>
-              <div className="flex items-center space-x-2 font-mono leading-none">
-                  <div className="w-1.5 h-1.5 bg-[#00FF41] rounded-full shadow-[0_0_8px_rgba(0,255,65,0.6)] shrink-0"></div>
-                  <span className="text-[#6B7280] dark:text-[#9CA3AF] text-[10px] font-bold tracking-tighter">L: 14MS S: 0x4B2</span>
-              </div>
-            </div>
-            
-            {/* Right: System Utilities */}
-            <div className="flex items-center space-x-2">
-              <button 
-                onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-                className="flex items-center justify-center text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-all cursor-pointer active:scale-90"
-              >
-                <Moon size={12} strokeWidth={2.5} />
-              </button>
-              <button 
-                className="flex items-center justify-center text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-all cursor-pointer active:scale-90"
-              >
-                <Activity size={12} strokeWidth={2.5} />
-              </button>
-            </div>
-          </div>
-        )}
+            )}
 
         {/* Row 2: Command Toolbar (h-9) - ONLY ON CHAT TAB */}
         {isInitialized && !isConversationOpen && currentView === 'CHAT' && (
@@ -325,10 +440,6 @@ export default function App() {
                     className={`text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors cursor-pointer flex items-center justify-center mr-1 ${isSearchExpanded ? 'text-[#1E40AF]' : ''}`}
                 >
                     <Search size={12} strokeWidth={2.5} />
-                </button>
-
-                <button className="w-5 h-5 bg-[#1E40AF] hover:bg-[#1D4ED8] flex items-center justify-center rounded-[2px] text-white shadow-sm transition-colors cursor-pointer border border-[#1E3A8A]">
-                    <UserPlus size={10} strokeWidth={2.5} />
                 </button>
 
                 <div className="flex items-center justify-center space-x-1 ml-1 text-[#6B7280] dark:text-[#9CA3AF] bg-black/5 dark:bg-white/5 h-5 px-1.5 rounded-[2px] border border-black/10 dark:border-white/10" title="Active Entities">
@@ -387,6 +498,7 @@ export default function App() {
                     {currentView === 'CHAT' && (
                       <ChatList 
                         contacts={filteredContacts} 
+                        dataReady={dataReady}
                         onLightningCall={startMediaCall} 
                         onSelectContact={handleSelectContact}
                         onNavigateToNodes={() => setCurrentView('NODES')}
@@ -418,6 +530,7 @@ export default function App() {
                       isGroup={activeContact?.isGroup}
                       convId={activeContact?.convId}
                       isIsolated={activeContact?.isIsolated}
+                      myDid={myDid}
                       targetName={activeContact?.name || (activeContact?.did && activeContact.did.includes(':') ? `${activeContact.did.slice(0, 12)}...` : activeContact?.did)}
                     />
                   </motion.div>
@@ -431,7 +544,7 @@ export default function App() {
         
         {/* Bottom Nav */}
         {!isConversationOpen && (
-            <div className="absolute bottom-0 inset-x-0 h-12 bg-white/50 dark:bg-black/50 backdrop-blur-lg border-t border-black/10 dark:border-white/10 flex items-center justify-around z-[300]">
+            <div className="absolute bottom-0 inset-x-0 bg-white/50 dark:bg-black/50 backdrop-blur-lg border-t border-black/10 dark:border-white/10 flex items-center justify-around z-[300] pb-[env(safe-area-inset-bottom)]" style={{ height: 'calc(3rem + env(safe-area-inset-bottom))' }}>
                 {/* Chat Tab */}
                 <button onClick={() => { setCurrentView('CHAT'); setIsConversationOpen(false); }} className="text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors">
                     <MessageSquare size={20} />
@@ -552,6 +665,47 @@ export default function App() {
                     setOverlayScreen('MediaCall');
                   }}
                />
+            </motion.div>
+          )}
+          {overlayScreen === 'MyIdentity' && (
+            <motion.div 
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               exit={{ opacity: 0 }}
+               className="absolute inset-0 z-[8000] bg-[#0A0A0B]/95 backdrop-blur-3xl flex flex-col items-center p-6"
+            >
+               <div className="absolute top-12 left-0 right-0 px-8 flex justify-between items-center z-50">
+                  <div className="flex flex-col">
+                    <span className="text-nexus-accent-gold font-mono text-[9px] tracking-[4px] uppercase font-black">Identity_Matrix_V4</span>
+                    <span className="text-white/20 text-[7px] uppercase tracking-[2px]">Terminal_Verification_Mode</span>
+                  </div>
+                  <button 
+                    onClick={() => setOverlayScreen(null)}
+                    className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 rounded-full text-white/40 hover:text-white transition-all cursor-pointer backdrop-blur-md"
+                  >
+                    <X size={24} />
+                  </button>
+               </div>
+               
+               <div className="flex-1 w-full flex flex-col items-center justify-center pt-8">
+                 <motion.div 
+                   initial={{ scale: 0.9, opacity: 0 }}
+                   animate={{ scale: 1, opacity: 1 }}
+                   className="w-full max-w-sm"
+                 >
+                   <IdentityCard did={myDid} />
+                 </motion.div>
+
+                 <div className="mt-16 flex flex-col items-center space-y-4 opacity-30 select-none">
+                    <div className="flex items-center space-x-2">
+                      <Shield size={10} className="text-nexus-accent-gold" />
+                      <span className="text-[7px] tracking-[3px] uppercase font-black">Encrypted_Peer_Handshake_Active</span>
+                    </div>
+                    <p className="text-[6px] text-center max-w-[200px] leading-relaxed uppercase tracking-widest text-nexus-ink-muted">
+                      This matrix is used for local p2p handshake only. Never share with untrusted or centralized entities.
+                    </p>
+                 </div>
+               </div>
             </motion.div>
           )}
         </AnimatePresence>

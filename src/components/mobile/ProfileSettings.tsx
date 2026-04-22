@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
+import { QRCodeSVG } from "qrcode.react";
 import {
   Copy,
   Shield,
@@ -61,10 +62,11 @@ export const ProfileSettings = ({
     privacy: false,
     ipMasking: true,
   });
-  const [password, setPassword] = useState("********");
-  const [powerProfile, setPowerProfile] = useState<
-    "PERFORMANCE" | "BALANCE" | "ECO"
-  >("BALANCE");
+    const [showVaultKey, setShowVaultKey] = useState(false);
+    const [password, setPassword] = useState("NX_KEY_8829_SECURE");
+    const [powerProfile, setPowerProfile] = useState<
+      "PERFORMANCE" | "BALANCE" | "ECO"
+    >("BALANCE");
   const [isMining, setIsMining] = useState(true);
   const [deviceList, setDeviceList] = useState(devices);
   const [isDevMode, setIsDevMode] = useState(false);
@@ -75,6 +77,8 @@ export const ProfileSettings = ({
 
   const [syncPhase, setSyncPhase] = useState<'DISPLAY' | 'INPUT'>('DISPLAY');
   const [sharedSecret, setSharedSecret] = useState("");
+  const [dynamicSyncCode, setDynamicSyncCode] = useState("");
+  const [syncCountdown, setSyncCountdown] = useState(5);
   const [isSyncing, setIsSyncing] = useState(false);
   const [revocationTarget, setRevocationTarget] = useState<any>(null);
   const [syncSuccess, setSyncSuccess] = useState(false);
@@ -159,6 +163,34 @@ export const ProfileSettings = ({
     }
     setIsScanning(false);
   };
+
+  useEffect(() => {
+    if (!showSyncModal || syncPhase !== 'DISPLAY') {
+      setSyncCountdown(5);
+      return;
+    }
+
+    const generateCode = () => {
+      const newCode = Array.from({length: 3}, () => Math.random().toString(36).substring(2, 6).toUpperCase()).join('-');
+      // Include timestamp to ensure uniqueness and dynamic nature
+      setDynamicSyncCode(`NXS-SYNC-${newCode}-${Math.floor(Date.now() / 5000)}`);
+      setSyncCountdown(5);
+    };
+
+    if (!dynamicSyncCode) generateCode();
+
+    const interval = setInterval(() => {
+      setSyncCountdown(prev => {
+        if (prev <= 1) {
+          generateCode();
+          return 5;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [showSyncModal, syncPhase, dynamicSyncCode]);
 
   const handleSyncExecution = async (name: string) => {
     setIsSyncing(true);
@@ -609,7 +641,10 @@ export const ProfileSettings = ({
 
           <div className="bg-white dark:bg-[#1C1C1E] rounded-[10px] overflow-hidden">
             {/* Vault Password */}
-            <div className="flex items-center justify-between p-4 border-b border-black/5 dark:border-white/5 bg-transparent">
+            <div 
+              onClick={() => setShowVaultKey(!showVaultKey)}
+              className="flex items-center justify-between p-4 border-b border-black/5 dark:border-white/5 bg-transparent active:bg-black/5 cursor-pointer transition-colors"
+            >
               <div className="flex items-center space-x-3">
                  <div className="w-7 h-7 rounded-md bg-[#007AFF]/10 flex items-center justify-center">
                    <Lock size={14} className="text-[#007AFF]" />
@@ -617,8 +652,10 @@ export const ProfileSettings = ({
                  <span className="text-black dark:text-white font-normal text-[15px]">Vault Key</span>
               </div>
               <div className="flex items-center space-x-2">
-                <span className="text-[#8E8E93] font-normal text-[15px]">✱✱✱✱✱✱✱✱</span>
-                <ChevronRight size={16} className="text-[#8E8E93]/50" />
+                <span className="text-[#8E8E93] font-mono text-[15px]">
+                  {showVaultKey ? password : "✱✱✱✱✱✱✱✱"}
+                </span>
+                <ChevronRight size={16} className={`text-[#8E8E93]/50 transition-transform ${showVaultKey ? 'rotate-90' : ''}`} />
               </div>
             </div>
 
@@ -704,8 +741,17 @@ export const ProfileSettings = ({
 
         {/* Module B: Node Profile */}
         <div className="space-y-2">
-           <div className="flex flex-col px-4">
-              <span className="text-[#8E8E93] text-xs font-normal">Identity Dossier</span>
+           <div className="flex items-center justify-between px-4">
+              <div className="flex flex-col">
+                <span className="text-[#8E8E93] text-xs font-normal">Identity Dossier</span>
+              </div>
+              <button 
+                onClick={() => setShowIdentityCard(true)}
+                className="flex items-center space-x-1 text-[#007AFF] text-xs font-medium"
+              >
+                <QrCode size={14} />
+                <span>My QR</span>
+              </button>
            </div>
 
           <div className="bg-white dark:bg-[#1C1C1E] rounded-[10px] overflow-hidden">
@@ -748,6 +794,34 @@ export const ProfileSettings = ({
               <ChevronRight size={16} className="text-[#8E8E93]/50" />
             </button>
           </div>
+        </div>
+
+        {/* Module C: Cross-Device Migration */}
+        <div className="space-y-2">
+           <div className="flex flex-col px-4">
+              <span className="text-[#8E8E93] text-xs font-normal">Migration Subsystem</span>
+           </div>
+           
+           <div className="bg-white dark:bg-[#1C1C1E] p-4 rounded-[10px] space-y-4">
+             <div className="flex items-start space-x-3">
+               <div className="w-8 h-8 rounded-full bg-nexus-accent-gold/10 flex items-center justify-center shrink-0">
+                 <RefreshCw size={16} className="text-nexus-accent-gold" />
+               </div>
+               <div className="space-y-1">
+                 <p className="text-[14px] font-medium text-black dark:text-white">Multi-Device Synchronization</p>
+                 <p className="text-[12px] text-[#8E8E93] leading-relaxed">
+                   To use this identity on another terminal, select "Restore Existing Node" during initialization and input your Recovery Seed. This will sync all shards and encryption keys instantly.
+                 </p>
+               </div>
+             </div>
+             
+             <div className="pt-2 border-t border-black/5 dark:border-white/5">
+                <div className="flex items-center justify-between text-[13px]">
+                   <span className="text-[#8E8E93]">Sync Protocol</span>
+                   <span className="text-black dark:text-white font-mono">ED25519_MESH_P2P</span>
+                </div>
+             </div>
+           </div>
         </div>
 
         {/* Device Auditing */}
@@ -899,8 +973,18 @@ export const ProfileSettings = ({
                         aria-labelledby="tab-display"
                         className="flex flex-col items-center space-y-6"
                       >
-                        <div className="p-4 bg-white rounded-xl shadow-sm border border-black/5 dark:border-white/5 relative group">
-                           <QrCode size={160} className="text-black" aria-label="Authorization QR Code" />
+                        <div className="p-4 bg-white rounded-xl shadow-sm border border-black/5 dark:border-white/5 relative group flex flex-col items-center">
+                           <QRCodeSVG 
+                             value={dynamicSyncCode} 
+                             size={160} 
+                             level="H"
+                             includeMargin={false}
+                             className="text-black" 
+                           />
+                           <div className="absolute -bottom-2 px-3 py-1 bg-black dark:bg-[#2C2C2E] rounded-full border border-black/10 dark:border-white/10 shadow-lg flex items-center space-x-2">
+                             <div className="w-1.5 h-1.5 bg-[#007AFF] rounded-full animate-pulse" />
+                             <span className="text-[9px] font-bold text-black dark:text-white font-mono uppercase tracking-[2px]">ROTATING: {syncCountdown}S</span>
+                           </div>
                         </div>
 
                         <div className="text-center space-y-2">

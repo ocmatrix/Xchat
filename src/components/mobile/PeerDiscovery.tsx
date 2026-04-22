@@ -3,6 +3,8 @@ import { X, Scan, Send, AlertCircle, Camera, Loader2, Key, Shield, RefreshCw, Ey
 import { motion, AnimatePresence } from 'motion/react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { NexusCompressionService, CompressedEnvelope } from '../../services/NexusCompressionService';
+import { NexusSecurityService } from '../../services/NexusSecurityService';
+import { FirebaseService } from '../../services/FirebaseService';
 
 interface PeerDiscoveryProps {
   onClose: () => void;
@@ -18,7 +20,7 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isCameraStarting, setIsCameraStarting] = useState(true);
   const [showKeyInput, setShowKeyInput] = useState(false);
-  const [pendingConnection, setPendingConnection] = useState<{ did: string; key: string; stats?: CompressedEnvelope } | null>(null);
+  const [pendingConnection, setPendingConnection] = useState<{ did: string; key: string; initiatorDid?: string; stats?: CompressedEnvelope } | null>(null);
   const qrCodeRegionRef = useRef<Html5Qrcode | null>(null);
   const scannerId = "nexus-qr-reader";
 
@@ -40,7 +42,14 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
   };
 
   useEffect(() => {
-    generateEncryptionKey(); // Initial key preparation
+    // Force stop any existing camera instances when mounting PeerDiscovery
+    Html5Qrcode.getCameras().then(devices => {
+        if(devices.length > 0) {
+           // Basic cleanup logic if needed, already handled by html5-qrcode
+        }
+    }).catch(console.error);
+
+    generateEncryptionKey();
     
     let html5QrCode: Html5Qrcode | null = null;
     
@@ -93,17 +102,27 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
     
     const finalKey = key || encryptionKey;
     
+    // Ensure Sovereign Identity is established for the handshake
+    let myIdentity = NexusSecurityService.getStoredIdentity();
+    if (!myIdentity) {
+      console.log("🆔 GENERATING_ON_THE_FLY_IDENTITY...");
+      myIdentity = await NexusSecurityService.generateSovereignIdentity();
+    }
+
     // Nexus Handshake Compression Optimization
     const handshakeMetadata = {
-      did,
-      key: finalKey,
+      targetDid: did,
+      initiatorDid: myIdentity.did,
+      initiatorPubKey: myIdentity.publicKey,
+      sessionKey: finalKey,
       timestamp: Date.now(),
-      protocol: 'SHIELD_V2',
+      protocol: 'SHIELD_V3_SOVEREIGN',
       sessionType: 'E2EE_P2P'
     };
 
     const envelope = await NexusCompressionService.compress(handshakeMetadata);
-    console.log("🗝️ KEY_EXCHANGE_INITIATED_FOR:", did, "COMPRESSED_REDUCTION:", ((1 - envelope.compressedSize / envelope.originalSize) * 100).toFixed(1) + "%");
+    console.log("🗝️ SOVEREIGN_HANDSHAKE_INITIATED:", did, "IDENTITY:", myIdentity.did);
+    console.log("📦 NEXUS_LOAD_REDUCTION:", ((1 - envelope.compressedSize / envelope.originalSize) * 100).toFixed(1) + "%");
     
     setTimeout(() => {
       if ('vibration' in navigator) {
@@ -113,7 +132,12 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
       setTimeout(() => {
         setFlash(false);
         setIsConnecting(false);
-        setPendingConnection({ did, key: finalKey, stats: envelope });
+        setPendingConnection({ 
+          did, 
+          key: finalKey, 
+          initiatorDid: myIdentity.did,
+          stats: envelope 
+        });
       }, 500);
     }, 1000);
   };
@@ -130,11 +154,47 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
         {pendingConnection && (
           <HandshakeConfirmation 
             did={pendingConnection.did}
+            initiatorDid={pendingConnection.initiatorDid || "LOCAL_NODE"}
             encryptionKey={pendingConnection.key}
             stats={pendingConnection.stats}
-            onConfirm={() => {
-              onConnected(pendingConnection.did, pendingConnection.key);
-              setPendingConnection(null);
+            isConnecting={isConnecting}
+            onConfirm={async () => {
+              if (isConnecting) return;
+              setIsConnecting(true);
+              
+              try {
+                // 1. Establish the Mesh Transport Channel
+                console.log("🛰️ MESH::INITIATING_TRANSPORT_LINK...");
+                const convId = await FirebaseService.getOrCreateDirectConversation(pendingConnection.did);
+                
+                if (convId) {
+                  // 2. Transmit the Cryptographic Handshake Signal
+                  // This establishes the E2EE parameters in the shared signaling channel
+                  await FirebaseService.sendMessage(convId, {
+                    content: JSON.stringify({
+                      type: 'handshake-request',
+                      initiator: pendingConnection.initiatorDid,
+                      sessionKey: pendingConnection.key,
+                      protocol: 'SOVEREIGN_V3'
+                    }),
+                    protocol: 'NXS-HANDSHAKE-SIG',
+                    nonce: crypto.randomUUID().slice(0, 8),
+                    type: 'signal'
+                  });
+                  
+                  console.log("✅ HANDSHAKE_SIGNAL_EMITTED::CONV=" + convId);
+                  onConnected(pendingConnection.did, pendingConnection.key);
+                }
+              } catch (err) {
+                console.error("🚫 HANDSHAKE_PROTOCOL_FAILURE:", err);
+                // Instead of only setting cameraError, show a clear alert or set state
+                // that HandshakeConfirmation can display.
+                setCameraError("SIGNALING TIMEOUT: P2P Link establishment failed.");
+              } finally {
+                // Remove setPendingConnection(null) from finally to keep the modal open on error,
+                // allowing the user to read the error and abort manually. 
+                setIsConnecting(false);
+              }
             }}
             onCancel={() => setPendingConnection(null)}
           />
@@ -245,32 +305,48 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
         </div>
         
         <div className="space-y-6">
-          <div className="flex items-center space-x-4">
-             <div className="flex-1 bg-nexus-border border-b border-nexus-border focus-within:border-nexus-accent-blue transition-all group">
-                <input 
-                   type="text"
-                   placeholder="INPUT NODE IDENTIFIER..."
-                   value={manualDid}
-                   onChange={(e) => setManualDid(e.target.value)}
-                   className="w-full bg-transparent border-none py-4 px-4 text-nexus-ink text-[11px] tracking-widest outline-none placeholder:text-nexus-ink/10 placeholder:font-black"
-                />
-             </div>
-             
-             <button 
-               onClick={handleManualConnect}
-               disabled={!manualDid.trim() || isConnecting}
-               className={`w-14 h-14 rounded-sm transition-all border-none cursor-pointer flex items-center justify-center shadow-2xl ${
-                 manualDid.trim() && !isConnecting 
-                   ? 'bg-nexus-accent-blue text-nexus-ink hover:scale-105 active:scale-95 shadow-[0_0_25px_rgba(0,209,255,0.3)]' 
-                   : 'bg-white/5 text-nexus-ink/10 cursor-not-allowed'
-               }`}
-             >
-               {isConnecting ? (
-                 <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-               ) : (
-                 <Send size={20} strokeWidth={2} />
-               )}
-             </button>
+          <div className="flex flex-col space-y-2">
+            <div className="flex justify-between items-end">
+               <span className="text-white/20 text-[7px] uppercase tracking-[2px] font-mono">Target_Node_DID</span>
+               <button 
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      setManualDid(text);
+                    } catch (e) {}
+                  }}
+                  className="text-nexus-accent-blue hover:text-white transition-colors text-[8px] uppercase font-bold tracking-widest bg-transparent border-none cursor-pointer"
+               >
+                 [PASTE_CLIPBOARD]
+               </button>
+            </div>
+            <div className="flex items-center space-x-4">
+               <div className="flex-1 bg-nexus-border border-b border-nexus-border focus-within:border-nexus-accent-blue transition-all group">
+                  <input 
+                     type="text"
+                     placeholder="INPUT NODE IDENTIFIER..."
+                     value={manualDid}
+                     onChange={(e) => setManualDid(e.target.value)}
+                     className="w-full bg-transparent border-none py-4 px-4 text-nexus-ink text-[11px] tracking-widest outline-none placeholder:text-nexus-ink/10 placeholder:font-black"
+                  />
+               </div>
+               
+               <button 
+                 onClick={handleManualConnect}
+                 disabled={!manualDid.trim() || isConnecting}
+                 className={`w-14 h-14 rounded-sm transition-all border-none cursor-pointer flex items-center justify-center shadow-2xl ${
+                   manualDid.trim() && !isConnecting 
+                     ? 'bg-nexus-accent-blue text-nexus-ink hover:scale-105 active:scale-95 shadow-[0_0_25px_rgba(0,209,255,0.3)]' 
+                     : 'bg-white/5 text-nexus-ink/10 cursor-not-allowed'
+                 }`}
+               >
+                 {isConnecting ? (
+                   <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                 ) : (
+                   <Send size={20} strokeWidth={2} />
+                 )}
+               </button>
+            </div>
           </div>
 
           <AnimatePresence>
@@ -328,10 +404,12 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
   );
 };
 
-const HandshakeConfirmation = ({ did, encryptionKey, stats, onConfirm, onCancel }: { 
+const HandshakeConfirmation = ({ did, initiatorDid, encryptionKey, stats, isConnecting, onConfirm, onCancel }: { 
   did: string, 
+  initiatorDid: string,
   encryptionKey: string,
   stats?: CompressedEnvelope,
+  isConnecting?: boolean,
   onConfirm: () => void, 
   onCancel: () => void 
 }) => {
@@ -348,59 +426,84 @@ const HandshakeConfirmation = ({ did, encryptionKey, stats, onConfirm, onCancel 
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="w-full max-w-sm bg-nexus-surface border border-nexus-border p-10 flex flex-col items-center shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+        className="w-full max-w-sm bg-nexus-surface border border-nexus-border p-8 flex flex-col items-center shadow-[0_0_100px_rgba(0,0,0,0.8)]"
       >
-        <div className="w-20 h-20 bg-nexus-accent-gold/5 border border-nexus-accent-gold/20 rounded-sm flex items-center justify-center mb-8 shadow-[0_0_30px_rgba(212,175,55,0.1)]">
-          <Shield size={40} className="text-nexus-accent-gold" />
+        <div className="w-16 h-16 bg-nexus-accent-gold/5 border border-nexus-accent-gold/20 rounded-sm flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(212,175,55,0.1)]">
+          <Shield size={32} className="text-nexus-accent-gold" />
         </div>
         
-        <h3 className="text-nexus-ink font-display text-xl font-bold tracking-tight mb-8 uppercase">Link_Handshake_Audit</h3>
+        <h3 className="text-nexus-ink font-display text-lg font-bold tracking-tight mb-6 uppercase text-center leading-none">
+          Handshake_Finalization
+          <span className="block text-[8px] text-nexus-accent-blue mt-2 tracking-[4px]">Sovereign_Protocol_V3</span>
+        </h3>
         
-        <div className="w-full space-y-6 mb-10">
-           <div className="flex flex-col items-start bg-nexus-border opacity-50 p-5 border border-nexus-border rounded-sm">
-              <span className="text-nexus-ink-muted opacity-50 text-[7px] uppercase tracking-[2px] mb-2 font-black">IDENTIFIED_PEER_NODE</span>
-              <span className="text-nexus-accent-blue text-[10px] break-all leading-relaxed font-bold tracking-tight">{did}</span>
+        <div className="w-full space-y-4 mb-8">
+           <div className="relative pv-6">
+              <div className="flex flex-col items-start bg-nexus-border/30 p-4 border border-nexus-border rounded-sm mb-2">
+                 <span className="text-nexus-ink-muted opacity-50 text-[6px] uppercase tracking-[2px] mb-1 font-black">LOCAL_INITIATOR_NODE</span>
+                 <span className="text-white text-[9px] break-all leading-tight font-bold tracking-tight opacity-70 italic">{initiatorDid}</span>
+              </div>
+              
+              <div className="flex items-center justify-center py-2 relative">
+                 <div className="absolute inset-x-0 h-[1px] bg-nexus-border" />
+                 <div className="bg-nexus-surface px-3 py-1 border border-nexus-border rounded-full z-10 flex items-center space-x-2">
+                    <RefreshCw size={8} className="text-nexus-accent-blue animate-spin-slow" />
+                    <span className="text-[6px] text-nexus-ink-muted uppercase tracking-[2px]">Linking</span>
+                 </div>
+              </div>
+
+              <div className="flex flex-col items-start bg-nexus-accent-blue/10 p-4 border border-nexus-accent-blue/30 rounded-sm mt-2">
+                 <span className="text-nexus-accent-blue text-[6px] uppercase tracking-[2px] mb-1 font-black">IDENTIFIED_PEER_TARGET</span>
+                 <span className="text-nexus-accent-blue text-[9px] break-all leading-tight font-bold tracking-tight">{did}</span>
+              </div>
            </div>
            
-           <div className="flex flex-col items-start bg-nexus-border opacity-50 p-5 border border-nexus-border rounded-sm">
-              <span className="text-nexus-ink-muted opacity-50 text-[7px] uppercase tracking-[2px] mb-2 font-black">CHANNEL_ENCRYPTION_SECRET</span>
-              <div className="flex items-start space-x-3 w-full">
-                <Key size={14} className="text-nexus-accent-gold shrink-0 mt-0.5" />
-                <span className="text-nexus-accent-gold text-[10px] break-all leading-relaxed font-bold tracking-tighter truncate">{encryptionKey}</span>
+           <div className="flex flex-col items-start border-t border-nexus-border pt-4">
+              <span className="text-nexus-ink-muted opacity-50 text-[6px] uppercase tracking-[2px] mb-2 font-black">SESSION_CIPHER_SECRET</span>
+              <div className="flex items-center space-x-3 w-full bg-black/40 p-3 border border-nexus-border rounded-sm">
+                <Key size={10} className="text-nexus-accent-gold shrink-0" />
+                <span className="text-nexus-accent-gold text-[9px] break-all leading-tight font-bold tracking-tighter truncate">{encryptionKey}</span>
               </div>
            </div>
 
            {stats && (
-             <div className="flex items-center justify-between bg-nexus-accent-blue/5 p-3 border border-nexus-accent-blue/10 rounded-sm">
+             <div className="flex items-center justify-between bg-white/5 p-3 border border-white/5 rounded-sm">
                 <div className="flex items-center space-x-3">
-                   <BarChart3 size={14} className="text-nexus-accent-blue" />
-                   <span className="text-nexus-ink-muted text-[7px] uppercase tracking-[2px] font-black">Transit_Nexus</span>
+                   <BarChart3 size={10} className="text-nexus-ink-muted" />
+                   <span className="text-nexus-ink-muted text-[6px] uppercase tracking-[2px] font-black">Handshake_Payload</span>
                 </div>
                 <div className="flex flex-col items-end">
-                   <span className="text-nexus-accent-blue text-[10px] font-black">-{reduction}% LOAD</span>
-                   <span className="text-nexus-ink/10 text-[6px] uppercase tracking-[1px]">{stats.compressedSize}b SHARD</span>
+                   <span className="text-nexus-accent-blue text-[9px] font-black">-{reduction}% SIZE</span>
                 </div>
              </div>
            )}
         </div>
         
-        <p className="text-nexus-ink/30 text-[9px] leading-relaxed mb-10 font-mono uppercase tracking-widest text-center px-4">
-          Verify peer credentials before enabling the secure symmetric tunnel and proceeding to shared data logs.
+        <p className="text-nexus-ink/20 text-[7px] leading-relaxed mb-8 font-mono uppercase tracking-[2px] text-center px-2">
+          By authorizing, you establish a direct sovereign link. Keys are stored in the local hardware enclave.
         </p>
         
-        <div className="w-full space-y-4">
+        <div className="w-full space-y-3">
           <button 
             onClick={onConfirm}
-            className="w-full h-16 bg-[#D4AF37] text-black font-bold text-[11px] tracking-[6px] uppercase hover:bg-nexus-accent-gold transition-all cursor-pointer rounded-sm border-none shadow-[0_0_40px_rgba(212,175,55,0.3)] active:scale-95"
+            disabled={isConnecting}
+            className="w-full h-14 bg-nexus-accent-blue text-black font-bold text-[10px] tracking-[4px] uppercase hover:opacity-90 transition-all cursor-pointer rounded-sm border-none shadow-[0_0_30px_rgba(0,209,255,0.2)] active:scale-95 flex items-center justify-center"
           >
-            AUTHORIZE_LINK
+            {isConnecting ? (
+               <div className="flex items-center space-x-2">
+                 <Loader2 size={16} className="animate-spin" />
+                 <span>[ PROCESSING_SIGNAL... ]</span>
+               </div>
+            ) : (
+              "AUTHORIZE_CONNECTION"
+            )}
           </button>
           
           <button 
             onClick={onCancel}
-            className="w-full h-14 bg-transparent border border-nexus-border text-nexus-ink-muted opacity-50 font-bold text-[9px] tracking-[3px] uppercase hover:bg-white/5 transition-all cursor-pointer rounded-sm active:scale-95"
+            className="w-full h-12 bg-transparent border border-nexus-border text-nexus-ink-muted opacity-40 font-bold text-[8px] tracking-[2px] uppercase hover:bg-white/5 transition-all cursor-pointer rounded-sm active:scale-95"
           >
-             DENY_NODE_CONNECTION
+             ABORT_HANDSHAKE
           </button>
         </div>
       </motion.div>

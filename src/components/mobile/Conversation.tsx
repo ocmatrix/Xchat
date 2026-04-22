@@ -269,13 +269,14 @@ const MemoizedMessageBubble = React.memo(({ item, idx, arr, burningCountdown, se
   );
 });
 
-export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsolated = false, targetName = "SECURE CHANNEL", convId }: { 
+export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsolated = false, targetName = "SECURE CHANNEL", convId, myDid }: { 
   onLightningCall: (mode: 'voice' | 'video') => void, 
   onBack: () => void, 
   isGroup?: boolean, 
   isIsolated?: boolean, 
   targetName?: string,
-  convId?: string
+  convId?: string,
+  myDid: string | null
 }) => {
   const [showGroupPanel, setShowGroupPanel] = useState(false);
   const [showPrivateChatSettings, setShowPrivateChatSettings] = useState(false);
@@ -294,8 +295,27 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
   const [videoCallState, setVideoCallState] = useState<'idle' | 'calling' | 'receiving' | 'connected'>('idle');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const webrtcService = useMemo(() => convId ? new WebRTCService(convId) : null, [convId]);
+  const webrtcService = useMemo(() => (convId && myDid) ? new WebRTCService(convId, myDid) : null, [convId, myDid]);
   const processedSignals = useRef<Set<string>>(new Set());
+
+  const handleP2PSend = () => {
+    if (!inputText.trim() || !webrtcService || !myDid) return;
+    const success = webrtcService.sendP2PMessage(inputText);
+    if (success) {
+      setLocalMessages(prev => [...prev, {
+        id: `p2p-${Date.now()}`,
+        senderId: myDid,
+        content: inputText,
+        timestamp: Date.now(),
+        sender: 'me',
+        isMe: true,
+        protocol: 'webrtc-datachannel'
+      }]);
+      setInputText("");
+    } else {
+      console.warn("P2P_CHANNEL_NOT_READY");
+    }
+  };
 
   // WebRTC Handlers
   const handleStartCall = async (mode: 'voice' | 'video') => {
@@ -309,6 +329,17 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
         (state) => {
           if (state === 'connected') setVideoCallState('connected');
           if (state === 'disconnected' || state === 'failed' || state === 'closed') handleEndCall();
+        },
+        (msg) => {
+          setLocalMessages(prev => [...prev, {
+            id: `p2p-${Date.now()}`,
+            senderId: 'them',
+            content: msg,
+            timestamp: Date.now(),
+            sender: 'them',
+            isMe: false,
+            protocol: 'webrtc-datachannel'
+          }]);
         }
       );
       await webrtcService.createOffer();
@@ -328,6 +359,17 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
         (state) => {
           if (state === 'connected') setVideoCallState('connected');
           if (state === 'disconnected' || state === 'failed' || state === 'closed') handleEndCall();
+        },
+        (msg) => {
+          setLocalMessages(prev => [...prev, {
+            id: `p2p-${Date.now()}`,
+            senderId: 'them',
+            content: msg,
+            timestamp: Date.now(),
+            sender: 'them',
+            isMe: false,
+            protocol: 'webrtc-datachannel'
+          }]);
         }
       );
       await webrtcService.acceptCall();
@@ -335,6 +377,19 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
     } catch (e) {
       console.error(e);
       setVideoCallState('idle');
+    }
+  };
+
+  const handleFileTransfer = async () => {
+    setShowAttachmentMenu(false);
+    if (videoCallState === 'idle') {
+      alert("Establishing P2P Tunnel for File Transfer...");
+      await handleStartCall('voice'); // Use voice mode as minimal P2P setup
+    }
+    // Simulation of file selection
+    const mockFile = { name: "SECRET_DOSSIER.PDF", size: "4.2MB" };
+    if (webrtcService) {
+      webrtcService.sendP2PMessage(`FILE_TRANSFER_INIT:${JSON.stringify(mockFile)}`);
     }
   };
 
@@ -376,7 +431,7 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
       const displayMsgs: any[] = [];
       
       msgs.forEach(m => {
-        const isMyMessage = m.senderId === auth.currentUser?.uid;
+        const isMyMessage = m.senderId === myDid;
         
         // Handle signals silently
         if (m.type === 'signal') {
@@ -591,7 +646,7 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
       )}
 
       {/* Header - iOS Style Consistency */}
-      <div className="absolute top-0 pt-0 left-0 right-0 z-[1000] flex items-center justify-between h-11 px-3 bg-[#F2F2F7]/95 dark:bg-[#1C1C1E]/95 backdrop-blur-md border-b border-black/5 dark:border-white/5 transition-all">
+      <div className="absolute top-0 left-0 right-0 z-[1000] flex items-center justify-between px-3 bg-[#F2F2F7]/95 dark:bg-[#1C1C1E]/95 backdrop-blur-md border-b border-black/5 dark:border-white/5 transition-all pt-[env(safe-area-inset-top)]" style={{ height: 'calc(2.75rem + env(safe-area-inset-top))' }}>
         {/* Left: Back button + Unread Count */}
         <div className="flex items-center w-[80px]">
           <button 
@@ -641,7 +696,7 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
       </div>
 
       {/* Telemetry Strip - iOS Info Banner Style */}
-      <div className="mt-[44px] h-7 flex items-center px-4 border-b border-black/5 dark:border-white/5 justify-between bg-white dark:bg-[#1C1C1E] overflow-hidden shrink-0">
+      <div className="flex items-center px-4 border-b border-black/5 dark:border-white/5 justify-between bg-white dark:bg-[#1C1C1E] overflow-hidden shrink-0 transition-all" style={{ marginTop: 'calc(2.75rem + env(safe-area-inset-top))', height: '1.75rem' }}>
          <div className="flex items-center min-w-0">
             <Terminal size={10} className="text-[#8E8E93] mr-2" />
             <span className="text-[#8E8E93] font-mono text-[9px] truncate tracking-tight">
@@ -714,7 +769,7 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
       </div>
       
       {/* iOS Style Input Interface */}
-      <div className={`bg-[#F2F2F7]/95 dark:bg-[#1C1C1E]/95 backdrop-blur-xl border-t border-black/5 dark:border-white/5 shrink-0 px-3 py-3 pb-6 z-20 transition-all duration-700 relative`}>
+      <div className={`bg-[#F2F2F7]/95 dark:bg-[#1C1C1E]/95 backdrop-blur-xl border-t border-black/5 dark:border-white/5 shrink-0 px-3 py-3 z-20 transition-all duration-700 relative pb-[calc(1.5rem+env(safe-area-inset-bottom))]`}>
         
         {/* Voice Recognition Status Indicator */}
         <AnimatePresence>
@@ -784,7 +839,10 @@ export const Conversation = ({ onLightningCall, onBack, isGroup = false, isIsola
                   </div>
                   <span className="text-[12px] font-medium text-black dark:text-white">Video</span>
                 </button>
-                <button className="flex flex-col items-center justify-center py-2 px-1 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors group cursor-pointer border-none bg-transparent">
+                <button 
+                  onClick={handleFileTransfer}
+                  className="flex flex-col items-center justify-center py-2 px-1 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors group cursor-pointer border-none bg-transparent"
+                >
                   <div className="w-14 h-14 rounded-full bg-white dark:bg-[#3A3A3C] shadow-sm border border-black/5 dark:border-white/5 flex items-center justify-center text-[#AF52DE] mb-1.5 group-active:scale-95 transition-transform">
                     <FileText size={28} />
                   </div>

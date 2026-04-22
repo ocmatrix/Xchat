@@ -48,57 +48,64 @@ const handleFirestoreError = (error: any, operationType: FirestoreErrorInfo['ope
 };
 
 export const FirebaseService = {
-  // User Management
+  // Node Discovery & Presence
   async syncUserProfile(did: string, name: string, avatar?: string) {
-    if (!auth.currentUser) return;
-    const userRef = doc(db, 'users', auth.currentUser.uid);
+    // Identity is now the Public Key (DID), not the centralized UID.
+    const nodeRef = doc(db, 'users', did);
     try {
       const avatarApi = import.meta.env.VITE_AVATAR_API || 'https://api.dicebear.com/7.x/pixel-art/svg';
-      await setDoc(userRef, {
+      await setDoc(nodeRef, {
         did,
-        name,
+        name: name || "NOMAD_" + did.slice(-4).toUpperCase(),
         avatar: avatar || `${avatarApi}?seed=${did}`,
         status: 'online',
         lastSeen: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        meshTransportId: auth.currentUser?.uid || 'isolated_internal'
       }, { merge: true });
-    } catch (e) { handleFirestoreError(e, 'write', `users/${auth.currentUser.uid}`); }
+      console.log(`🌐 MESH_REGISTRY_UPDATED::DID=${did}`);
+    } catch (e) { 
+      console.warn("MESH_REGISTRY_UNAVAILABLE (Offline Mode)");
+      // We don't throw here to allow Isolated Mode to function
+    }
   },
 
-  // Conversation Management
+  // Peer-to-Peer Signaling Handshake
   async getOrCreateDirectConversation(targetDid: string) {
-    if (!auth.currentUser) return null;
-    const myUid = auth.currentUser.uid;
+    const myDid = localStorage.getItem('NXS_IDENTITY_DID');
+    if (!myDid) return null;
     
-    // Check for existing conversation with these participants
-    const q = query(
-      collection(db, 'conversations'),
-      where('type', '==', 'direct'),
-      where('participants', 'array-contains', myUid)
-    );
+    // Sort DIDs to create a deterministic conversation ID for the channel
+    const channelId = [myDid, targetDid].sort().join('_').replace(/[:.]/g, '-');
+    const convRef = doc(db, 'conversations', channelId);
     
-    const snapshot = await getDocs(q);
-    const existing = snapshot.docs.find(d => d.data().participants.includes(targetDid));
-    
-    if (existing) return existing.id;
+    try {
+      const snap = await getDoc(convRef);
+      if (snap.exists()) return snap.id;
 
-    // Create new
-    const convRef = await addDoc(collection(db, 'conversations'), {
-      type: 'direct',
-      participants: [myUid, targetDid],
-      updatedAt: serverTimestamp(),
-      isIsolated: false
-    });
-    return convRef.id;
+      await setDoc(convRef, {
+        type: 'direct',
+        participants: [myDid, targetDid],
+        updatedAt: serverTimestamp(),
+        isIsolated: false,
+        protocol: 'REALEX_P2P_v3'
+      });
+      return channelId;
+    } catch (e) { 
+      handleFirestoreError(e, 'write', `conversations/${channelId}`);
+      return null;
+    }
   },
 
   // Messaging
   async sendMessage(convId: string, encryptedPayload: { content: string, protocol: string, nonce: string, type: string, ttl?: number }) {
-    if (!auth.currentUser) return;
+    const myDid = localStorage.getItem('NXS_IDENTITY_DID');
+    if (!myDid) return;
+    
     const msgRef = collection(db, 'conversations', convId, 'messages');
     try {
       await addDoc(msgRef, {
-        senderId: auth.currentUser.uid,
+        senderId: myDid,
         ...encryptedPayload,
         timestamp: serverTimestamp()
       });

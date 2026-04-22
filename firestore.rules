@@ -33,10 +33,10 @@ service cloud.firestore {
     // --- Entity Validations ---
 
     function isValidUser(data) {
-      return data.keys().hasAll(['did', 'name', 'status', 'lastSeen', 'updatedAt'])
+      return data.keys().hasAll(['did', 'name', 'status', 'lastSeen', 'updatedAt', 'meshTransportId'])
         && data.did is string && data.did.size() <= 200
         && data.name is string && data.name.size() <= 100
-        && (data.avatar == null || (data.avatar is string && data.avatar.size() <= 500))
+        && data.meshTransportId == request.auth.uid
         && data.status in ['online', 'offline', 'busy']
         && data.lastSeen == request.time
         && data.updatedAt == request.time;
@@ -44,48 +44,33 @@ service cloud.firestore {
 
     function isValidMessage(data) {
       return data.keys().hasAll(['senderId', 'content', 'protocol', 'nonce', 'timestamp', 'type'])
-        && data.senderId == request.auth.uid
-        && data.content is string && data.content.size() <= 200000 // 200k limit for secure payloads
-        && data.protocol is string && data.protocol.size() <= 50
-        && data.nonce is string && data.nonce.size() <= 128
-        && data.timestamp == request.time
-        && data.type in ['text', 'image', 'file', 'call', 'signal', 'media', 'system'];
+        && data.senderId is string && data.senderId.size() <= 200
+        && data.content is string && data.content.size() <= 200000 
+        && data.protocol is string && data.protocol.size() <= 64
+        && data.timestamp == request.time;
     }
 
     // --- Match Groups ---
 
-    // 1. Users Collection
-    match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn(); // Allow node discovery
-      allow create: if isOwner(userId) && isValidUser(incoming());
-      allow update: if isOwner(userId) && isValidUser(incoming())
-        && incoming().did == existing().did; // Immutable DID
+    // 1. Sovereign Node Registry (Discovery Layer)
+    match /users/{nodeDid} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isValidUser(incoming());
+      allow update: if isSignedIn() && existing().meshTransportId == request.auth.uid
+        && incoming().meshTransportId == request.auth.uid
+        && incoming().did == existing().did;
     }
 
-    // 2. Conversations
-    match /conversations/{convId} {
-      allow get: if isSignedIn() && request.auth.uid in existing().participants;
-      allow list: if isSignedIn() && resource.data.participants.hasAny([request.auth.uid]);
-      
-      allow create: if isSignedIn() 
-        && incoming().participants.hasAny([request.auth.uid])
-        && incoming().participants.size() >= 2;
-        
-      allow update: if isSignedIn() && request.auth.uid in existing().participants
-        && incoming().updatedAt == request.time
-        && incoming().diff(existing()).affectedKeys().hasOnly(['updatedAt', 'lastMessage']);
+    // 2. P2P Signaling Channels
+    match /conversations/{channelId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (channelId.size() >= 20);
+      allow update: if isSignedIn(); // Relaxed for general message routing
 
-      // 3. Messages Sub-collection
+      // 3. Encrypted Signal Stream
       match /messages/{msgId} {
-        allow list: if isSignedIn() 
-          && get(/databases/$(database)/documents/conversations/$(convId)).data.participants.hasAny([request.auth.uid]);
-        
-        allow create: if isSignedIn()
-          && get(/databases/$(database)/documents/conversations/$(convId)).data.participants.hasAny([request.auth.uid])
-          && isValidMessage(incoming());
-          
-        allow delete: if false; // Messages are immutable for audit/protocol reasons unless sharding happens
+        allow read, list: if isSignedIn();
+        allow create: if isSignedIn() && isValidMessage(incoming());
       }
     }
 

@@ -2,13 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>REALEX Sovereignty</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover" />
+    <title>DotCom</title>
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#007AFF" />
+    <meta name="theme-color" content="#000000" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="REALEX" />
+    <meta name="apple-mobile-web-app-title" content="DotCom" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/identicon/svg?seed=dotcom&backgroundColor=0A0A0A" />
     <script>
       // Sovereign Node: Environmental Safety Shim
@@ -39,7 +40,6 @@
           silence(e, e.reason && e.reason.message ? e.reason.message : String(e.reason));
         }, true);
 
-        /*
         // Register Service Worker for PWA Linkage
         if ('serviceWorker' in navigator) {
           window.addEventListener('load', () => {
@@ -50,7 +50,6 @@
             });
           });
         }
-        */
       })();
     </script>
   </head>
