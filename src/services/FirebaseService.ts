@@ -13,7 +13,8 @@ import {
   Timestamp,
   updateDoc,
   deleteDoc,
-  limit
+  limit,
+  runTransaction
 } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 
@@ -90,6 +91,105 @@ export const FirebaseService = {
       isIsolated: false
     });
     return convRef.id;
+  },
+
+  // Friend Requests (Bidirectional Handshake)
+  async sendFriendRequest(toID: string) {
+    if (!auth.currentUser) throw new Error('User must be authenticated');
+    if (!toID || toID === auth.currentUser.uid) throw new Error('Invalid friend request target');
+
+    const fromID = auth.currentUser.uid;
+    const dedupeQuery = query(
+      collection(db, 'friend_requests'),
+      where('fromID', '==', fromID),
+      where('toID', '==', toID),
+      where('status', '==', 'pending'),
+      limit(1)
+    );
+    const existing = await getDocs(dedupeQuery);
+    if (!existing.empty) return existing.docs[0].id;
+
+    const docRef = await addDoc(collection(db, 'friend_requests'), {
+      fromID,
+      toID,
+      status: 'pending',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return docRef.id;
+  },
+
+  subscribeToIncomingFriendRequests(callback: (requests: any[]) => void) {
+    if (!auth.currentUser) return () => {};
+    const incomingQuery = query(
+      collection(db, 'friend_requests'),
+      where('toID', '==', auth.currentUser.uid),
+      where('status', '==', 'pending')
+    );
+
+    return onSnapshot(incomingQuery, (snapshot) => {
+      const requests = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      }));
+      callback(requests);
+    }, (e) => handleFirestoreError(e, 'list', 'friend_requests'));
+  },
+
+  async acceptFriendRequest(requestId: string) {
+    if (!auth.currentUser) throw new Error('User must be authenticated');
+    const myUid = auth.currentUser.uid;
+    const reqRef = doc(db, 'friend_requests', requestId);
+
+    return runTransaction(db, async (tx) => {
+      const reqSnap = await tx.get(reqRef);
+      if (!reqSnap.exists()) throw new Error('Friend request not found');
+      const reqData = reqSnap.data() as any;
+
+      if (reqData.toID !== myUid) throw new Error('Not authorized to accept this friend request');
+      if (reqData.status !== 'pending') {
+        return { fromID: reqData.fromID, toID: reqData.toID, convId: reqData.convId || null };
+      }
+
+      const participants = [reqData.fromID, reqData.toID].sort();
+      const convId = `direct_${participants[0]}_${participants[1]}`;
+      const convRef = doc(db, 'conversations', convId);
+      const convSnap = await tx.get(convRef);
+      if (!convSnap.exists()) {
+        tx.set(convRef, {
+          type: 'direct',
+          participants,
+          updatedAt: serverTimestamp(),
+          isIsolated: false
+        });
+      } else {
+        tx.update(convRef, { updatedAt: serverTimestamp() });
+      }
+
+      const fromFriendRef = doc(db, 'users', reqData.fromID, 'friends', reqData.toID);
+      const toFriendRef = doc(db, 'users', reqData.toID, 'friends', reqData.fromID);
+      tx.set(fromFriendRef, {
+        userId: reqData.toID,
+        requestId,
+        convId,
+        since: serverTimestamp()
+      }, { merge: true });
+      tx.set(toFriendRef, {
+        userId: reqData.fromID,
+        requestId,
+        convId,
+        since: serverTimestamp()
+      }, { merge: true });
+
+      tx.update(reqRef, {
+        status: 'accepted',
+        convId,
+        updatedAt: serverTimestamp(),
+        acceptedAt: serverTimestamp()
+      });
+
+      return { fromID: reqData.fromID, toID: reqData.toID, convId };
+    });
   },
 
   // Messaging

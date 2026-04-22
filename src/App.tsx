@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Component, ReactNode } from 'react';
+import React, { useState, useEffect, Component, ReactNode, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AuthWall } from './components/mobile/AuthWall';
 import { auth, db } from './lib/firebase';
@@ -166,6 +166,7 @@ export default function App() {
   const [activeNodes, setActiveNodes] = useState<any[]>([]);
   const [localContacts, setLocalContacts] = useState<SovereignContact[]>([]);
   const [peerSessionKeys, setPeerSessionKeys] = useState<Record<string, string>>({});
+  const promptedFriendRequestIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -202,6 +203,32 @@ export default function App() {
   }, [currentUser]);
 
   useEffect(() => {
+    if (!currentUser) return;
+    const unsubscribe = FirebaseService.subscribeToIncomingFriendRequests((requests) => {
+      requests.forEach(async (req) => {
+        if (promptedFriendRequestIds.current.has(req.id)) return;
+        promptedFriendRequestIds.current.add(req.id);
+
+        const shouldAccept = window.confirm(`收到来自 ${req.fromID} 的好友请求，是否同意？`);
+        if (!shouldAccept) return;
+
+        try {
+          const accepted = await FirebaseService.acceptFriendRequest(req.id);
+          const peerUid = accepted.fromID === currentUser.uid ? accepted.toID : accepted.fromID;
+          NexusContactService.saveContactLocally({
+            did: peerUid,
+            sharedKey: peerSessionKeys[peerUid] || '',
+            convId: accepted.convId
+          });
+        } catch (error) {
+          console.error('FRIEND_HANDSHAKE_ACCEPT_FAILED::', error);
+        }
+      });
+    });
+    return () => unsubscribe();
+  }, [currentUser, peerSessionKeys]);
+
+  useEffect(() => {
     const loadContacts = () => setLocalContacts(NexusContactService.getLocalContacts());
     loadContacts();
     const updateEvent = NexusContactService.getUpdateEventName();
@@ -227,6 +254,13 @@ export default function App() {
   }, [peerSessionKeys, activeContact]);
 
   const handleSelectContact = async (contact: any) => {
+    console.log('[ChatDebug] handleSelectContact invoked:', {
+      did: contact?.did,
+      id: contact?.id,
+      uid: contact?.uid,
+      convId: contact?.convId,
+      isGroup: contact?.isGroup
+    });
     setIsConversationOpen(true);
     let convId = contact.convId || contact.id;
     
@@ -235,14 +269,22 @@ export default function App() {
       if (!convId) {
         const directTargetId = contact.id || contact.uid || contact.did;
         if (!directTargetId) {
+          console.warn('[ChatDebug] Missing direct target identifier:', contact);
           throw new Error('Direct conversation target is missing an identifier');
         }
+        console.log('[ChatDebug] No chatId found. Attempting getOrCreateDirectConversation with:', directTargetId);
         const resolvedId = await FirebaseService.getOrCreateDirectConversation(directTargetId);
         convId = resolvedId || convId;
       }
     }
+
+    if (!convId) {
+      console.warn('[ChatDebug] chatId still missing after fallback resolution:', contact);
+      throw new Error('Failed to resolve conversation id for selected contact');
+    }
     
     const signalKey = contact.sharedKey || (contact.did ? peerSessionKeys[contact.did] : undefined);
+    console.log('[ChatDebug] Opening conversation:', { convId, signalKeyPresent: !!signalKey });
     setActiveContact({ ...contact, convId, signalKey });
   };
 

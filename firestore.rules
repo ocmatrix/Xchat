@@ -52,6 +52,19 @@ service cloud.firestore {
         && data.type in ['text', 'image', 'file', 'call', 'signal', 'media', 'system'];
     }
 
+    function hasMutualFriendship(uidA, uidB) {
+      return exists(/databases/$(database)/documents/users/$(uidA)/friends/$(uidB))
+        && exists(/databases/$(database)/documents/users/$(uidB)/friends/$(uidA));
+    }
+
+    function isDirectConversationAllowed(conversationData) {
+      return conversationData.type != 'direct'
+        || (
+          conversationData.participants.size() == 2
+          && hasMutualFriendship(conversationData.participants[0], conversationData.participants[1])
+        );
+    }
+
     // --- Match Groups ---
 
     // 1. Users Collection
@@ -65,28 +78,57 @@ service cloud.firestore {
 
     // 2. Conversations
     match /conversations/{convId} {
-      allow get: if isSignedIn() && request.auth.uid in existing().participants;
-      allow list: if isSignedIn() && resource.data.participants.hasAny([request.auth.uid]);
+      allow get: if isSignedIn()
+        && request.auth.uid in existing().participants
+        && isDirectConversationAllowed(existing());
+      allow list: if isSignedIn()
+        && resource.data.participants.hasAny([request.auth.uid])
+        && isDirectConversationAllowed(resource.data);
       
       allow create: if isSignedIn() 
         && incoming().participants.hasAny([request.auth.uid])
-        && incoming().participants.size() >= 2;
+        && incoming().participants.size() >= 2
+        && isDirectConversationAllowed(incoming());
         
       allow update: if isSignedIn() && request.auth.uid in existing().participants
+        && isDirectConversationAllowed(existing())
         && incoming().updatedAt == request.time
         && incoming().diff(existing()).affectedKeys().hasOnly(['updatedAt', 'lastMessage']);
 
       // 3. Messages Sub-collection
       match /messages/{msgId} {
         allow list: if isSignedIn() 
-          && get(/databases/$(database)/documents/conversations/$(convId)).data.participants.hasAny([request.auth.uid]);
+          && get(/databases/$(database)/documents/conversations/$(convId)).data.participants.hasAny([request.auth.uid])
+          && isDirectConversationAllowed(get(/databases/$(database)/documents/conversations/$(convId)).data);
         
         allow create: if isSignedIn()
           && get(/databases/$(database)/documents/conversations/$(convId)).data.participants.hasAny([request.auth.uid])
+          && isDirectConversationAllowed(get(/databases/$(database)/documents/conversations/$(convId)).data)
           && isValidMessage(incoming());
           
         allow delete: if false; // Messages are immutable for audit/protocol reasons unless sharding happens
       }
+    }
+
+    // 3.5 Friend Requests & Friend Graph
+    match /friend_requests/{requestId} {
+      allow create: if isSignedIn()
+        && incoming().fromID == request.auth.uid
+        && incoming().toID is string
+        && incoming().toID != request.auth.uid
+        && incoming().status == 'pending';
+      allow get, list: if isSignedIn()
+        && (resource.data.fromID == request.auth.uid || resource.data.toID == request.auth.uid);
+      allow update: if isSignedIn()
+        && resource.data.toID == request.auth.uid
+        && resource.data.status == 'pending'
+        && incoming().status == 'accepted';
+    }
+
+    match /users/{userId}/friends/{friendId} {
+      allow get, list: if isOwner(userId);
+      allow create, update: if isSignedIn() && request.auth.uid in [userId, friendId];
+      allow delete: if false;
     }
 
     // 4. Invites
