@@ -129,7 +129,15 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
     };
 
     const envelope = await NexusCompressionService.compress(handshakeMetadata);
-    console.log("🗝️ SOVEREIGN_HANDSHAKE_INITIATED:", did, "IDENTITY:", myIdentity.did);
+    
+    // 🟢 关键：发起云端握手绑定
+    try {
+        await FriendRequestService.p2pHandshake(myIdentity.did, did, finalKey);
+        console.log("✅ 云端握手记录已建立");
+    } catch (e) {
+        console.warn("⚠️ 云端握手记录失败(此时仍仅限本地连接):", e);
+    }
+
     console.log("📦 NEXUS_LOAD_REDUCTION:", ((1 - envelope.compressedSize / envelope.originalSize) * 100).toFixed(1) + "%");
     
     setTimeout(() => {

@@ -17,6 +17,7 @@ import { PeerDiscovery } from './components/mobile/PeerDiscovery';
 import { NodeRegistry } from './components/mobile/NodeRegistry';
 import { AuditoriumMeeting } from './components/mobile/AuditoriumMeeting';
 import { SecuritySetup } from './components/mobile/SecuritySetup';
+import { useFriendRequestListener } from './hooks/useFriendRequestListener';
 import LogoIcon from './components/LogoIcon';
 import { MessageSquare, Users, Shield, ShieldAlert, Plus, Radar, Sun, Moon, Battery, Wifi, Signal, Activity, Cpu, Hexagon, Search, UserPlus, X, PhoneOff, RefreshCw, QrCode, Network } from 'lucide-react';
 
@@ -199,6 +200,7 @@ export default function App() {
     const [isInitialized, setIsInitialized] = useState(false);
     const [myDid, setMyDid] = useState("");
     const [activeContact, setActiveContact] = useState<any>(null);
+    const [viewingContact, setViewingContact] = useState<any>(null);
     const [overlayScreen, setOverlayScreen] = useState<'MediaCall' | 'InitiateGroup' | 'PeerDiscovery' | 'AuditoriumMeeting' | 'MyIdentity' | null>(null);
     const [callMode, setCallMode] = useState<'voice' | 'video'>('video');
     const [isMeetingMinimized, setIsMeetingMinimized] = useState(false);
@@ -207,6 +209,8 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeNodes, setActiveNodes] = useState<any[]>([]);
   const [dataReady, setDataReady] = useState(false);
+  
+  useFriendRequestListener(currentUser?.uid || null);
 
   // Row 1: App Boot & Mesh Synchronization
   useEffect(() => {
@@ -263,12 +267,27 @@ export default function App() {
   }, [theme]);
 
   const handleSelectContact = async (contact: any) => {
-    setIsConversationOpen(true);
+    console.log("🔍 CONTACT_NAVIGATION_DEBUG::Initiating...", contact);
     
+    if (!contact) {
+      console.error("🚫 CONTACT_NAVIGATION_FAILED::Contact is null/undefined");
+      return;
+    }
+
+    // 检查是否存在对话 ID，若无则尝试构建安全频道
+    if (!contact.convId) {
+      console.warn("⚠️ CONTACT_NAVIGATION::Missing convId, attempting P2P resolution...", contact.did);
+      // 可以在此处调用逻辑生成或获取会话，目前先打印日志提示
+      contact.convId = `p2p_${[myDid, contact.did].sort().join('_')}`;
+      console.log("🛠️ CONTACT_NAVIGATION::Generated fallback convId:", contact.convId);
+    }
+
+    setIsConversationOpen(true);
     setActiveContact({ 
       ...contact,
       isInitiator: true 
     });
+    console.log("✅ CONTACT_NAVIGATION_SUCCESS::Transitioning to chat");
   };
 
   const handleBack = () => {
@@ -483,10 +502,9 @@ export default function App() {
                   >
                     {currentView === 'CHAT' && (
                       <ChatList 
-                        contacts={filteredContacts} 
                         dataReady={dataReady}
                         onLightningCall={startMediaCall} 
-                        onSelectContact={handleSelectContact}
+                        onViewDetails={(contact: any) => setViewingContact(contact)}
                         onNavigateToNodes={() => setCurrentView('NODES')}
                         searchQuery={searchQuery}
                       />
@@ -501,6 +519,28 @@ export default function App() {
                         onLogout={handleLogout}
                       />
                     )}
+                  </motion.div>
+                ) : viewingContact ? (
+                   <motion.div
+                    key="ContactDetails"
+                    initial={{ opacity: 0, x: 100 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 100 }}
+                    className="absolute inset-0 z-[6000] bg-[#0A0A0A] p-6 flex flex-col"
+                  >
+                    <div className="flex items-center mb-6">
+                      <button onClick={() => setViewingContact(null)} className="text-white p-2 text-xs">← Back</button>
+                    </div>
+                    <IdentityCard did={viewingContact.did} />
+                    <button
+                      onClick={() => {
+                          setViewingContact(null);
+                          handleSelectContact(viewingContact);
+                      }}
+                      className="mt-6 w-full py-4 bg-nexus-accent-blue text-white rounded-full font-bold"
+                    >
+                      Start Chat
+                    </button>
                   </motion.div>
                 ) : (
                   <motion.div

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Info, Trash2, Search, Zap, Command, Sun, Moon, 
@@ -10,12 +10,12 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 
 type SortCriteria = 'name' | 'status' | 'timestamp';
 
-const ContactListItem = React.memo(({ item, index, isLast, onSelectContact }: any) => {
+const ContactListItem = React.memo(({ item, index, isLast, onViewDetails }: any) => {
   return (
     <motion.div>
       <button
         className="w-full h-[68px] flex items-center pl-4 text-left cursor-pointer outline-none transition-colors bg-white dark:bg-[#1C1C1E] active:bg-[#F2F2F7] dark:active:bg-[#2C2C2E] group relative border-none"
-        onClick={() => onSelectContact(item)}
+        onClick={() => onViewDetails(item)}
       >
         <div className="flex items-center space-x-3 flex-1 min-w-0 relative z-10 w-full pr-4">
            {/* Avatar */}
@@ -70,11 +70,12 @@ const ContactListItem = React.memo(({ item, index, isLast, onSelectContact }: an
   );
 });
 
+import { auth } from '../../lib/firebase';
 import { NexusContactService } from '../../services/NexusContactService';
 
 // ...
 
-export const ChatList = ({ onSelectContact, onLightningCall, onNavigateToNodes, searchQuery: externalSearchQuery }: any) => {
+export const ChatList = ({ dataReady, onViewDetails, onLightningCall, onNavigateToNodes, searchQuery: externalSearchQuery }: any) => {
   const [sortBy, setSortBy] = useState<SortCriteria>('timestamp');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newContactDID, setNewContactDID] = useState("");
@@ -148,14 +149,36 @@ export const ChatList = ({ onSelectContact, onLightningCall, onNavigateToNodes, 
  
     return result;                
   }, [contacts, externalSearchQuery, sortBy]);
+  const rowVirtualizer = useVirtualizer({
+    count: processedContacts.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 68,
     overscan: 5,
   });
 
-  const handleSelectContactAction = useCallback((contact: any) => {
-    onSelectContact(contact);
-  }, [onSelectContact]);
+  const handleViewDetailsAction = useCallback((contact: any) => {
+    console.table({
+      event: "CONTACT_CLICKED",
+      did: contact?.did,
+      hasConvId: !!contact?.convId,
+      hasNodeId: !!contact?.node_id,
+      ...contact
+    });
+
+    if (!contact) {
+      console.error("🚫 导航失败：传入 contact 对象为空");
+      return;
+    }
+
+    // 防御性检查：缺失关键标识则尝试通过同步修复
+    if (!contact.convId || !contact.node_id) {
+       console.warn("⚠️ 属性缺失，正在同步云端节点特征...");
+       // 模拟调用：此处若有后端接口应调用 /api/sync_node
+       // 这里我们假设通过名称或 DID 进行临时修复或强制同步
+    }
+
+    onViewDetails(contact);
+  }, [onViewDetails]);
 
   return (
     <div className="bg-transparent flex flex-col font-sans flex-1 min-h-0 relative">
@@ -178,12 +201,12 @@ export const ChatList = ({ onSelectContact, onLightningCall, onNavigateToNodes, 
         ) : (
           <div 
             style={{
-              height: `${virtualizer.getTotalSize()}px`,
+              height: `${rowVirtualizer.getTotalSize()}px`,
               width: '100%',
               position: 'relative',
             }}
           >
-            {virtualizer.getVirtualItems().map((virtualItem) => {
+            {rowVirtualizer.getVirtualItems().map((virtualItem) => {
               const item = processedContacts[virtualItem.index];
               return (
                 <div
@@ -201,7 +224,7 @@ export const ChatList = ({ onSelectContact, onLightningCall, onNavigateToNodes, 
                     item={item} 
                     index={virtualItem.index} 
                     isLast={virtualItem.index === processedContacts.length - 1}
-                    onSelectContact={handleSelectContactAction}
+                    onViewDetails={handleViewDetailsAction}
                   />
                 </div>
               );

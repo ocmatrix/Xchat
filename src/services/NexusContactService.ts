@@ -36,6 +36,15 @@ export class NexusContactService {
     }
   }
 
+  // Helper alias to support frontend service signature
+  static saveContact(contact: { uid: string, chatId: string, status: string }) {
+    return this.saveContactLocally({
+      did: contact.uid,
+      sharedKey: 'PENDING_HANDSHAKE',
+      convId: contact.chatId
+    });
+  }
+
   // 🟢 拉取本地联系人
   static getLocalContacts() {
     try {

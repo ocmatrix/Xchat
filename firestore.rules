@@ -1,90 +1,24 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // 0. Default Deny
+    // 0. Default Deny Everything (Strict Backend-Proxy enforced)
     match /{document=**} {
       allow read, write: if false;
     }
 
     // --- Helper Functions ---
-    
-    function isSignedIn() {
-      return request.auth != null;
+    // Kept for documentation, but bypassed in real production deployment
+    function isSignedIn() { return request.auth != null; }
+
+    // 1. Friend Requests (Read-only for clients, managed by Backend SA)
+    match /friend_requests/{requestId} {
+      allow read: if isSignedIn(); // Allow only to read own requests if needed
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function incoming() {
-      return request.resource.data;
-    }
-
-    function existing() {
-      return resource.data;
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    // --- Entity Validations ---
-
-    function isValidUser(data) {
-      return data.keys().hasAll(['did', 'name', 'status', 'lastSeen', 'updatedAt', 'meshTransportId'])
-        && data.did is string && data.did.size() <= 200
-        && data.name is string && data.name.size() <= 100
-        && data.meshTransportId == request.auth.uid
-        && data.status in ['online', 'offline', 'busy']
-        && data.lastSeen == request.time
-        && data.updatedAt == request.time;
-    }
-
-    function isValidMessage(data) {
-      return data.keys().hasAll(['senderId', 'content', 'protocol', 'nonce', 'timestamp', 'type'])
-        && data.senderId is string && data.senderId.size() <= 200
-        && data.content is string && data.content.size() <= 200000 
-        && data.protocol is string && data.protocol.size() <= 64
-        && data.timestamp == request.time;
-    }
-
-    // --- Match Groups ---
-
-    // 1. Sovereign Node Registry (Discovery Layer)
-    match /users/{nodeDid} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && isValidUser(incoming());
-      allow update: if isSignedIn() && existing().meshTransportId == request.auth.uid
-        && incoming().meshTransportId == request.auth.uid
-        && incoming().did == existing().did;
-    }
-
-    // 2. P2P Signaling Channels
+    // 2. Chat Conversations (Read-only for clients)
     match /conversations/{channelId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && (channelId.size() >= 20);
-      allow update: if isSignedIn(); // Relaxed for general message routing
-
-      // 3. Encrypted Signal Stream
-      match /messages/{msgId} {
-        allow read, list: if isSignedIn();
-        allow create: if isSignedIn() && isValidMessage(incoming());
-      }
-    }
-
-    // 4. Invites
-    match /invites/{code} {
-      allow get: if true; // Public check for join
-      allow create: if isSignedIn() 
-        && incoming().expiresAt > request.time
-        && incoming().createdBy == request.auth.uid;
-    }
-
-    // 5. System Health
-    match /system/ping {
-      allow get: if true; // Publicly accessible for health checks
     }
   }
 }
