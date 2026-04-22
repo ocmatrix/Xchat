@@ -7,6 +7,7 @@ import {
   MessageSquareOff, Radar, UserPlus, UserCheck, X, RefreshCw
 } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { FirebaseService } from '../../services/FirebaseService';
 
 type SortCriteria = 'name' | 'status' | 'timestamp';
 
@@ -131,8 +132,49 @@ export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigat
     overscan: 5,
   });
 
-  const handleSelectContactAction = useCallback((contact: any) => {
-    onSelectContact(contact);
+  const handleChatClick = useCallback(async (contact: any) => {
+    console.log('[ChatList] Contact click received');
+    console.table(contact || {});
+
+    let resolvedContact = { ...contact };
+    const missingNodeId = !resolvedContact?.node_id && !resolvedContact?.nodeId && !resolvedContact?.uid && !resolvedContact?.id && !resolvedContact?.did;
+    const missingConversationId = !resolvedContact?.conversation_id && !resolvedContact?.conversationId && !resolvedContact?.convId;
+
+    if (missingNodeId || missingConversationId) {
+      console.warn('[ChatList] Missing critical contact fields. Starting cloud metadata sync...', {
+        missingNodeId,
+        missingConversationId
+      });
+      try {
+        resolvedContact = await FirebaseService.syncContactMetadata(resolvedContact);
+      } catch (error) {
+        console.error('[ChatList] Cloud metadata sync failed:', error);
+      }
+    }
+
+    const finalNodeId = resolvedContact?.node_id || resolvedContact?.nodeId || resolvedContact?.uid || resolvedContact?.id || resolvedContact?.did;
+    const finalConversationId = resolvedContact?.conversation_id || resolvedContact?.conversationId || resolvedContact?.convId;
+
+    if (!finalNodeId || !finalConversationId) {
+      console.warn('[ChatList] Navigation blocked: missing node_id or conversation_id after sync.', {
+        finalNodeId,
+        finalConversationId,
+        resolvedContact
+      });
+      return;
+    }
+
+    if (!resolvedContact?.publicKey && !resolvedContact?.pubKey) {
+      console.warn('[ChatList] Potential route guard block: public key missing in context payload.', resolvedContact);
+    }
+
+    onSelectContact({
+      ...resolvedContact,
+      id: resolvedContact.id || finalNodeId,
+      uid: resolvedContact.uid || finalNodeId,
+      did: resolvedContact.did || finalNodeId,
+      convId: resolvedContact.convId || finalConversationId
+    });
   }, [onSelectContact]);
 
   return (
@@ -166,7 +208,7 @@ export const ChatList = ({ contacts, onSelectContact, onLightningCall, onNavigat
                   item={item} 
                   index={virtualItem.index} 
                   isLast={virtualItem.index === processedContacts.length - 1}
-                  onSelectContact={handleSelectContactAction}
+                  onSelectContact={handleChatClick}
                 />
               </div>
             );

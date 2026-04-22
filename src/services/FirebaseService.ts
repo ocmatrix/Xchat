@@ -192,6 +192,47 @@ export const FirebaseService = {
     });
   },
 
+  async syncContactMetadata(contact: any) {
+    if (!auth.currentUser) throw new Error('User must be authenticated');
+    const merged = { ...(contact || {}) };
+
+    let nodeId = merged.node_id || merged.nodeId || merged.uid || merged.id || null;
+    if (!nodeId && merged.did) {
+      const userByDidQuery = query(collection(db, 'users'), where('did', '==', merged.did), limit(1));
+      const didMatch = await getDocs(userByDidQuery);
+      if (!didMatch.empty) {
+        nodeId = didMatch.docs[0].id;
+      }
+    }
+
+    if (nodeId) {
+      const userSnap = await getDoc(doc(db, 'users', nodeId));
+      if (userSnap.exists()) {
+        const userData = userSnap.data() as any;
+        merged.publicKey = merged.publicKey || userData.publicKey || userData.pubKey || null;
+        merged.did = merged.did || userData.did || nodeId;
+        merged.name = merged.name || userData.name || merged.did || nodeId;
+      } else {
+        merged.did = merged.did || nodeId;
+      }
+      merged.uid = merged.uid || nodeId;
+      merged.id = merged.id || nodeId;
+      merged.node_id = merged.node_id || nodeId;
+      merged.nodeId = merged.nodeId || nodeId;
+    }
+
+    let conversationId = merged.conversation_id || merged.conversationId || merged.convId || null;
+    if (!conversationId && nodeId) {
+      conversationId = await this.getOrCreateDirectConversation(nodeId);
+    }
+
+    merged.conversation_id = merged.conversation_id || conversationId;
+    merged.conversationId = merged.conversationId || conversationId;
+    merged.convId = merged.convId || conversationId;
+
+    return merged;
+  },
+
   // Messaging
   async sendMessage(convId: string, encryptedPayload: { content: string, protocol: string, nonce: string, type: string, ttl?: number }) {
     if (!auth.currentUser) return;
