@@ -24,6 +24,20 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
   const qrCodeRegionRef = useRef<Html5Qrcode | null>(null);
   const scannerId = "nexus-qr-reader";
 
+  const parseScannedPayload = (raw: string) => {
+    const trimmed = (raw || '').trim();
+    if (!trimmed) return null;
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (typeof parsed?.did === 'string' && parsed.did.trim()) {
+        return { did: parsed.did.trim(), key: typeof parsed?.key === 'string' ? parsed.key : undefined };
+      }
+    } catch {
+      // not json payload; continue as raw DID
+    }
+    return { did: trimmed, key: undefined };
+  };
+
   // Generate a cryptographically strong symmetric key (AES-GCM 256)
   const generateEncryptionKey = async () => {
     try {
@@ -60,8 +74,12 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
           config,
           (decodedText) => {
              console.log("🔓 QR_PAYLOAD_DECRYPTED:", decodedText);
-             // Use the scanned DID
-             handleExternalConnect(decodedText);
+             const parsedPayload = parseScannedPayload(decodedText);
+             if (!parsedPayload?.did) {
+               setCameraError('二维码数据无效，缺少 DID');
+               return;
+             }
+             handleExternalConnect(parsedPayload.did, parsedPayload.key);
           },
           () => {
              // Silence parsing errors as they happen constantly during scanning
@@ -85,39 +103,50 @@ export const PeerDiscovery = ({ onClose, onConnected }: PeerDiscoveryProps) => {
   }, []);
 
   const handleExternalConnect = async (did: string, key?: string) => {
-    // Stop scanner first
-    if (qrCodeRegionRef.current && qrCodeRegionRef.current.isScanning) {
-      qrCodeRegionRef.current.stop().catch(console.error);
-    }
-    
-    setManualDid(did);
-    setIsConnecting(true);
-    
-    const finalKey = key || encryptionKey;
-    
-    // Nexus Handshake Compression Optimization
-    const handshakeMetadata = {
-      did,
-      key: finalKey,
-      timestamp: Date.now(),
-      protocol: 'SHIELD_V2',
-      sessionType: 'E2EE_P2P'
-    };
-
-    const envelope = await NexusCompressionService.compress(handshakeMetadata);
-    console.log("🗝️ KEY_EXCHANGE_INITIATED_FOR:", did, "COMPRESSED_REDUCTION:", ((1 - envelope.compressedSize / envelope.originalSize) * 100).toFixed(1) + "%");
-    
-    setTimeout(() => {
-      if ('vibration' in navigator) {
-        try { navigator.vibrate([100, 50, 100]); } catch (e) { /* silent */ }
+    try {
+      if (!did || !did.trim()) {
+        setCameraError('目标节点 DID 为空');
+        return;
       }
-      setFlash(true);
+
+      // Stop scanner first
+      if (qrCodeRegionRef.current && qrCodeRegionRef.current.isScanning) {
+        qrCodeRegionRef.current.stop().catch(console.error);
+      }
+      
+      setManualDid(did);
+      setIsConnecting(true);
+      
+      const finalKey = key || encryptionKey;
+      
+      // Nexus Handshake Compression Optimization
+      const handshakeMetadata = {
+        did,
+        key: finalKey,
+        timestamp: Date.now(),
+        protocol: 'SHIELD_V2',
+        sessionType: 'E2EE_P2P'
+      };
+
+      const envelope = await NexusCompressionService.compress(handshakeMetadata);
+      console.log("🗝️ KEY_EXCHANGE_INITIATED_FOR:", did, "COMPRESSED_REDUCTION:", ((1 - envelope.compressedSize / envelope.originalSize) * 100).toFixed(1) + "%");
+      
       setTimeout(() => {
-        setFlash(false);
-        setIsConnecting(false);
-        setPendingConnection({ did, key: finalKey, stats: envelope });
-      }, 500);
-    }, 1000);
+        if ('vibration' in navigator) {
+          try { navigator.vibrate([100, 50, 100]); } catch (e) { /* silent */ }
+        }
+        setFlash(true);
+        setTimeout(() => {
+          setFlash(false);
+          setIsConnecting(false);
+          setPendingConnection({ did, key: finalKey, stats: envelope });
+        }, 500);
+      }, 1000);
+    } catch (error) {
+      console.error('PEER_DISCOVERY_HANDSHAKE_FAILURE::', error);
+      setIsConnecting(false);
+      setCameraError('扫码握手失败，请重试');
+    }
   };
 
   const handleManualConnect = () => {

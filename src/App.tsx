@@ -167,6 +167,7 @@ export default function App() {
   const [localContacts, setLocalContacts] = useState<SovereignContact[]>([]);
   const [peerSessionKeys, setPeerSessionKeys] = useState<Record<string, string>>({});
   const promptedFriendRequestIds = useRef<Set<string>>(new Set());
+  const [requiresBackupConfirmation, setRequiresBackupConfirmation] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -174,9 +175,12 @@ export default function App() {
         setCurrentUser(user);
         const deterministicDid = `did:nexus:node:${user.uid.slice(0, 16)}`;
         setMyDid(deterministicDid);
-        setIsInitialized(true);
+        const backupConfirmed = localStorage.getItem(`NEXUS_BACKUP_CONFIRMED_${user.uid}`) === 'true';
+        setRequiresBackupConfirmation(!backupConfirmed);
+        setIsInitialized(backupConfirmed);
       } else {
         setCurrentUser(null);
+        setRequiresBackupConfirmation(false);
         setIsInitialized(false);
       }
     });
@@ -293,8 +297,18 @@ export default function App() {
     setActiveContact(null);
   };
 
-  const handleSetupComplete = (did: string) => {
+  const handleAuthSuccess = (did: string) => {
     setMyDid(did);
+    setRequiresBackupConfirmation(true);
+    setIsInitialized(false);
+  };
+
+  const handleSetupComplete = (did: string) => {
+    if (auth.currentUser?.uid) {
+      localStorage.setItem(`NEXUS_BACKUP_CONFIRMED_${auth.currentUser.uid}`, 'true');
+    }
+    setMyDid(did);
+    setRequiresBackupConfirmation(false);
     setIsInitialized(true);
   };
 
@@ -328,7 +342,9 @@ export default function App() {
       <div className={`w-full h-[100dvh] sm:w-[393px] sm:h-[852px] ${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-transparent'} flex flex-col relative sm:border sm:border-black/10 dark:sm:border-white/10 sm:rounded-[6px] overflow-hidden transition-colors duration-500 shadow-2xl`}>
         
         {!currentUser ? (
-          <AuthWall onSuccess={handleSetupComplete} />
+          <AuthWall onSuccess={handleAuthSuccess} />
+        ) : requiresBackupConfirmation ? (
+          <SecuritySetup onComplete={handleSetupComplete} />
         ) : (
           <>
             {/* Row 1: System Telemetry & Status (h-9) - HIDDEN WHEN IN CONVERSATION */}
