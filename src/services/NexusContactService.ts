@@ -20,16 +20,17 @@ export class NexusContactService {
     return `p2p_${sorted[0]}_${sorted[1]}`;
   }
 
-  static saveContactLocally(contactData: { did: string; sharedKey: string; convId: string }) {
+  static saveContactLocally(contactData: { did: string; sharedKey: string; convId: string; name?: string }) {
     if (typeof window === 'undefined') return false;
     try {
       const existingData = localStorage.getItem(this.STORAGE_KEY);
       const contacts: SovereignContact[] = existingData ? JSON.parse(existingData) : [];
 
       const existingIndex = contacts.findIndex((contact) => contact.did === contactData.did);
+      const existingContact = existingIndex > -1 ? contacts[existingIndex] : null;
       const newContact: SovereignContact = {
         ...contactData,
-        name: `节点 ${contactData.did.slice(-4)}`,
+        name: contactData.name || existingContact?.name || `节点 ${contactData.did.slice(-4)}`,
         addedAt: Date.now(),
         isGroup: false,
         online: true,

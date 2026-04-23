@@ -150,7 +150,6 @@ export class WebRTCService {
         await this.peerConnection!.setRemoteDescription(remoteDesc);
         this.isRemoteDescriptionSet = true;
         await this.processIceQueue();
-        await this.acceptCall();
       } else if (payload.type === 'answer') {
         const remoteDesc = new RTCSessionDescription({ type: 'answer', sdp: payload.sdp });
         await this.peerConnection!.setRemoteDescription(remoteDesc);
@@ -172,7 +171,10 @@ export class WebRTCService {
 
   public async acceptCall() {
     if (!this.peerConnection) return;
-    if (this.peerConnection.signalingState !== 'have-remote-offer') return;
+    if (this.peerConnection.signalingState !== 'have-remote-offer') {
+      console.warn("WebRTC Warning accepting call: signaling state is not have-remote-offer", this.peerConnection.signalingState);
+      return;
+    }
     try {
       const answer = await this.peerConnection.createAnswer();
       await this.peerConnection.setLocalDescription(answer);
